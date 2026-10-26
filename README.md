@@ -1,7 +1,6 @@
 # 🚚 Gestor de Rutas Móvil
 ### Sistema de Logística y Distribución Inmediata
 > **Evaluación Académica:** Desarrollo de Aplicaciones Móviles 1  
-> **Nivel de Cumplimiento:** SOBRESALIENTE (20/20)  
 > **Tecnologías:** React Native + Expo SDK 52 + TypeScript (Strict Mode)
 
 ---
@@ -97,7 +96,7 @@ src/
   - Eliminación del pedido si se requiere.
 
 ### 5. `RouteSummaryModalOrScreen` (Manifiesto de Carga y Arqueo)
-- **Barra de Progreso Operativo:** Porcentaje de cumplimiento del ruteo.
+- **Barra de Progreso Operativo:** Porcentaje de avance de entregas de la ruta.
 - **Capacidad Física en Bodega Móvil:** Conteo agregado de unidades físicas por categoría (ej. cuántos bidones de 20L, balones de gas o sacos de harina están a bordo del vehículo).
 - **Paradas por Distrito:** Agrupamiento de pedidos por distrito (Surco, San Borja, Miraflores, Ate, etc.) para optimizar el recorrido.
 - **Arqueo de Caja y Cobranza:** Desglose del dinero recibido en Efectivo, Yape/Plin y Bancos/POS, así como el saldo pendiente por liquidar en calle.
