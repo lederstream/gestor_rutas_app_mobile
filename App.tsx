@@ -8,6 +8,7 @@
 import 'react-native-url-polyfill/auto';
 import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { registerRootComponent } from 'expo';
 import { StatusBar } from 'expo-status-bar';
 import { OrderProvider } from './src/context/OrderContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
@@ -22,3 +23,5 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
+registerRootComponent(App);

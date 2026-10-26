@@ -2,7 +2,7 @@
   "name": "gestor-rutas-app-mobile",
   "version": "1.0.0",
   "description": "Gestor de Rutas Móvil - Sistema de Logística y Distribución Inmediata",
-  "main": "App.tsx",
+  "main": "expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
