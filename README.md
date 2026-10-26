@@ -122,7 +122,7 @@ src/
    ```
 
 4. **Ejecución:**
-   - **En Dispositivo Físico:** Escanea el código QR mostrado en la consola con la aplicación **Expo Go** (disponible gratis en Google Play y Apple App Store).
+   - **En Dispositivo Físico:** Escanea el código QR mostrado en la consola con la aplicación **Expo Go**
    - **En Emulador Android:** Presiona la tecla `a` en la terminal.
    - **En Simulador iOS:** Presiona la tecla `i` en la terminal.
    - **En Web:** Presiona la tecla `w` en la terminal.
