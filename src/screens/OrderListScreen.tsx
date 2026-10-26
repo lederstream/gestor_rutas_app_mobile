@@ -151,6 +151,27 @@ export const OrderListScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </View>
 
+      {/* Map Switcher Banner */}
+      <TouchableOpacity
+        style={styles.mapBannerBtn}
+        onPress={() => navigation.navigate('MapRouteScreen')}
+        activeOpacity={0.85}
+      >
+        <View style={styles.mapBannerLeft}>
+          <View style={styles.mapIconCircle}>
+            <Ionicons name="map" size={16} color="#FFFFFF" />
+          </View>
+          <View>
+            <Text style={styles.mapBannerTitle}>Ver Recorrido en Mapa</Text>
+            <Text style={styles.mapBannerSubtitle}>Puntos GPS y paradas estilo Uber</Text>
+          </View>
+        </View>
+        <View style={styles.mapBannerBadge}>
+          <Text style={styles.mapBannerBadgeText}>ABRIR</Text>
+          <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
+        </View>
+      </TouchableOpacity>
+
       {/* Search Input */}
       <View style={styles.searchSection}>
         <CustomInput
@@ -312,6 +333,62 @@ const styles = StyleSheet.create({
     width: 1,
     height: 24,
     backgroundColor: COLORS.border,
+  },
+  mapBannerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0F172A',
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  mapBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  mapIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#0284C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapBannerTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  mapBannerSubtitle: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 1,
+  },
+  mapBannerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0284C7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 2,
+  },
+  mapBannerBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   searchSection: {
     flexDirection: 'row',

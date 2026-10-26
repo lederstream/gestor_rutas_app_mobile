@@ -197,3 +197,16 @@ export const DEFAULT_DRIVERS = [
   'Miguel Flores (Moto 01)',
   'Roberto Quispe (Camión 01)',
 ];
+
+export const DISTRICT_COORDINATES: Record<string, { latitude: number; longitude: number }> = {
+  'San Borja': { latitude: -12.0984, longitude: -77.0016 },
+  'Santiago de Surco': { latitude: -12.1355, longitude: -76.9961 },
+  'Miraflores': { latitude: -12.1192, longitude: -77.0298 },
+  'San Isidro': { latitude: -12.0969, longitude: -77.0347 },
+  'La Molina': { latitude: -12.0797, longitude: -76.9458 },
+  'Ate Vitarte': { latitude: -12.0450, longitude: -76.9200 },
+  'Lince': { latitude: -12.0838, longitude: -77.0346 },
+  'Magdalena del Mar': { latitude: -12.0924, longitude: -77.0706 },
+  'Jesús María': { latitude: -12.0747, longitude: -77.0483 },
+  'Los Olivos': { latitude: -11.9793, longitude: -77.0711 },
+};

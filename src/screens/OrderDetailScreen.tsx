@@ -15,6 +15,7 @@ import {
   Alert,
   StatusBar,
   Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -93,6 +94,66 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         `Mensaje enviado a ${order.customerPhone}`
       );
     });
+  };
+
+  // GPS Navigation Handlers (Google Maps / Waze)
+  const handleOpenGoogleMaps = () => {
+    const fullAddress = `${order.deliveryAddress}, ${order.district}, Lima, Perú`;
+    const encoded = encodeURIComponent(fullAddress);
+    const url = Platform.select({
+      ios: `maps://?daddr=${encoded}&dirflg=d`,
+      android: `google.navigation:q=${encoded}&mode=d`,
+      default: `https://www.google.com/maps/dir/?api=1&destination=${encoded}`,
+    });
+
+    Linking.canOpenURL(url)
+      .then((supported) => {
+        if (supported) {
+          return Linking.openURL(url);
+        } else {
+          return Linking.openURL(
+            `https://www.google.com/maps/dir/?api=1&destination=${encoded}`
+          );
+        }
+      })
+      .catch(() => {
+        Linking.openURL(
+          `https://www.google.com/maps/dir/?api=1&destination=${encoded}`
+        );
+      });
+  };
+
+  const handleOpenWaze = () => {
+    const fullAddress = `${order.deliveryAddress}, ${order.district}, Lima, Perú`;
+    const encoded = encodeURIComponent(fullAddress);
+    const wazeUrl = `https://waze.com/ul?q=${encoded}&navigate=yes`;
+    Linking.openURL(wazeUrl).catch(() => {
+      Alert.alert(
+        'Waze no disponible',
+        'No se pudo abrir Waze. Puedes usar Google Maps.'
+      );
+    });
+  };
+
+  const handleOpenNavigationModal = () => {
+    Alert.alert(
+      'Navegación GPS en Ruta',
+      `Iniciar guiado en vivo hacia:\n${order.deliveryAddress}\n(${order.district})`,
+      [
+        {
+          text: 'Google Maps (Recomendado)',
+          onPress: handleOpenGoogleMaps,
+        },
+        {
+          text: 'Waze',
+          onPress: handleOpenWaze,
+        },
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+      ]
+    );
   };
 
   // Status transitions
@@ -253,6 +314,29 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
             </View>
           )}
+
+          {/* Direct GPS Navigation Button */}
+          <TouchableOpacity
+            style={styles.gpsNavigationButton}
+            onPress={handleOpenNavigationModal}
+            activeOpacity={0.82}
+          >
+            <View style={styles.gpsButtonLeft}>
+              <View style={styles.gpsIconCircle}>
+                <Ionicons name="navigate" size={18} color="#FFFFFF" />
+              </View>
+              <View>
+                <Text style={styles.gpsButtonTitle}>Navegar con GPS</Text>
+                <Text style={styles.gpsButtonSubtitle}>
+                  Abrir ruta en Google Maps o Waze
+                </Text>
+              </View>
+            </View>
+            <View style={styles.gpsButtonBadge}>
+              <Text style={styles.gpsButtonBadgeText}>IR AHORA</Text>
+              <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Product Items & Billing Breakdown */}
@@ -377,6 +461,15 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {order.status === 'IN_TRANSIT' && (
             <>
+              <CustomButton
+                title="Abrir GPS / Guiado en Ruta"
+                icon="navigate-circle-outline"
+                size="lg"
+                variant="primary"
+                onPress={handleOpenNavigationModal}
+                style={{ marginBottom: 10 }}
+                fullWidth
+              />
               <CustomButton
                 title="Confirmar Entrega Conforme"
                 icon="checkmark-done-outline"
@@ -710,5 +803,59 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#B91C1C',
     marginTop: 2,
+  },
+  gpsNavigationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0284C7',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginTop: 16,
+    elevation: 3,
+    shadowColor: '#0284C7',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+  },
+  gpsButtonLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  gpsIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gpsButtonTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  gpsButtonSubtitle: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 1,
+  },
+  gpsButtonBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    gap: 2,
+  },
+  gpsButtonBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
 });

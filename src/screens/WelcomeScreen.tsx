@@ -38,15 +38,15 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
         {/* Brand Hero Header */}
         <View style={styles.heroBanner}>
           <View style={styles.logoBadge}>
-            <Ionicons name="cube" size={32} color={COLORS.primary} />
+            <Ionicons name="navigate" size={32} color={COLORS.primary} />
           </View>
           <View style={styles.taglineBadge}>
-            <Ionicons name="school-outline" size={12} color={COLORS.accent} />
-            <Text style={styles.taglineText}>DESARROLLO DE APLICACIONES MÓVILES 1</Text>
+            <Ionicons name="radio-outline" size={12} color={COLORS.accent} />
+            <Text style={styles.taglineText}>SISTEMA DE RUTAS Y NAVEGACIÓN GPS</Text>
           </View>
           <Text style={styles.heroTitle}>Gestor de Rutas</Text>
           <Text style={styles.heroSubtitle}>
-            Sistema integral de gestión de pedidos, control de carga en vehículo y ruteo de distribución inmediata.
+            Panel de control para conductores, despacho inmediato y navegación de entregas en tiempo real.
           </Text>
         </View>
 
@@ -125,25 +125,35 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
         {/* Action Buttons */}
         <View style={styles.actionsContainer}>
           <CustomButton
-            title="Iniciar Ruta del Día"
-            icon="navigate-circle-outline"
+            title="Iniciar Ruta del Día (Lista)"
+            icon="list-outline"
             size="lg"
             variant="primary"
             onPress={() => navigation.navigate('OrderListScreen')}
             fullWidth
           />
 
-          <View style={styles.actionRow}>
+          <CustomButton
+            title="Ver Mapa de Entregas (GPS)"
+            icon="map-outline"
+            size="lg"
+            variant="secondary"
+            onPress={() => navigation.navigate('MapRouteScreen')}
+            style={{ marginTop: 10 }}
+            fullWidth
+          />
+
+          <View style={[styles.actionRow, { marginTop: 10 }]}>
             <CustomButton
               title="Nuevo Pedido"
               icon="add-circle-outline"
               size="md"
-              variant="secondary"
+              variant="outline"
               onPress={() => navigation.navigate('CreateOrderScreen')}
               style={styles.flexOne}
             />
             <CustomButton
-              title="Hoja de Ruta"
+              title="Hoja de Carga"
               icon="clipboard-outline"
               size="md"
               variant="outline"
@@ -159,7 +169,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
           >
             <Ionicons name="refresh-outline" size={14} color={COLORS.textMuted} />
             <Text style={styles.resetButtonText}>
-              Restablecer datos demo de prueba
+              Restablecer pedidos de ejemplo
             </Text>
           </TouchableOpacity>
         </View>
@@ -184,31 +194,38 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondary,
   },
   logoBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: '#1E293B',
+    width: 68,
+    height: 68,
+    borderRadius: 22,
+    backgroundColor: '#0F172A',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#334155',
+    borderColor: 'rgba(56, 189, 248, 0.4)',
     marginBottom: 16,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
   },
   taglineBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(6, 182, 212, 0.15)',
+    backgroundColor: 'rgba(6, 182, 212, 0.12)',
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(6, 182, 212, 0.25)',
     gap: 6,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   taglineText: {
     color: COLORS.accent,
     fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1,
+    fontWeight: '700',
+    letterSpacing: 0.8,
   },
   heroTitle: {
     fontSize: 32,

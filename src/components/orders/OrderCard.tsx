@@ -11,6 +11,8 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Linking,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Order, OrderStatus } from '../../models/Order';
@@ -50,6 +52,32 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     if (onQuickStatusChange) {
       onQuickStatusChange(order.id, 'DELIVERED');
     }
+  };
+
+  const handleOpenGps = (e: any) => {
+    e.stopPropagation?.();
+    const fullAddress = `${order.deliveryAddress}, ${order.district}, Lima, Perú`;
+    const encoded = encodeURIComponent(fullAddress);
+    const url = Platform.select({
+      ios: `maps://?daddr=${encoded}&dirflg=d`,
+      android: `google.navigation:q=${encoded}&mode=d`,
+      default: `https://www.google.com/maps/dir/?api=1&destination=${encoded}`,
+    });
+    Linking.canOpenURL(url)
+      .then((supported) => {
+        if (supported) {
+          return Linking.openURL(url);
+        } else {
+          return Linking.openURL(
+            `https://www.google.com/maps/dir/?api=1&destination=${encoded}`
+          );
+        }
+      })
+      .catch(() => {
+        Linking.openURL(
+          `https://www.google.com/maps/dir/?api=1&destination=${encoded}`
+        );
+      });
   };
 
   return (
@@ -94,7 +122,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         {order.customerName}
       </Text>
 
-      {/* Address & District */}
+      {/* Address & District with Quick GPS */}
       <View style={styles.addressRow}>
         <Ionicons
           name="location"
@@ -106,6 +134,14 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           {order.deliveryAddress}{' '}
           <Text style={styles.districtText}>({order.district})</Text>
         </Text>
+        <TouchableOpacity
+          style={styles.quickGpsBtn}
+          onPress={handleOpenGps}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="navigate" size={11} color="#FFFFFF" />
+          <Text style={styles.quickGpsText}>GPS</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Items Summary Pill */}
@@ -253,6 +289,23 @@ const styles = StyleSheet.create({
   districtText: {
     fontWeight: '600',
     color: COLORS.textPrimary,
+  },
+  quickGpsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0284C7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 3,
+    marginLeft: 6,
+    alignSelf: 'center',
+  },
+  quickGpsText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   itemsBox: {
     flexDirection: 'row',

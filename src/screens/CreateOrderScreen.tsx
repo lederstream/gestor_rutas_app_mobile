@@ -33,6 +33,7 @@ import {
   PAYMENT_METHOD_CONFIG,
   AVAILABLE_DISTRICTS,
   DEFAULT_DRIVERS,
+  DISTRICT_COORDINATES,
 } from '../utils/constants';
 import { formatCurrency } from '../utils/formatters';
 import { Header } from '../components/common/Header';
@@ -134,6 +135,10 @@ export const CreateOrderScreen: React.FC<Props> = ({ navigation }) => {
     }
 
     const newOrderCode = `GR-${Math.floor(1000 + Math.random() * 9000)}`;
+    const districtCoord = DISTRICT_COORDINATES[district] || { latitude: -12.0984, longitude: -77.0016 };
+    const latOffset = (Math.random() - 0.5) * 0.008;
+    const lngOffset = (Math.random() - 0.5) * 0.008;
+
     const newOrder: Order = {
       id: `ord-${Date.now()}`,
       orderCode: newOrderCode,
@@ -160,6 +165,8 @@ export const CreateOrderScreen: React.FC<Props> = ({ navigation }) => {
       scheduledTime: scheduledTime.trim() || undefined,
       driverAssigned,
       notes: notes.trim() || undefined,
+      latitude: districtCoord.latitude + latOffset,
+      longitude: districtCoord.longitude + lngOffset,
       createdAt: new Date().toISOString(),
     };
 

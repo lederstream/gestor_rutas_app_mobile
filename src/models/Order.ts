@@ -41,6 +41,8 @@ export interface Order {
   scheduledTime?: string;
   notes?: string;
   driverAssigned?: string;
+  latitude?: number;
+  longitude?: number;
   createdAt: string; // ISO 8601 string
   deliveredAt?: string;
 }

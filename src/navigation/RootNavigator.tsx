@@ -17,6 +17,7 @@ import { OrderListScreen } from '../screens/OrderListScreen';
 import { CreateOrderScreen } from '../screens/CreateOrderScreen';
 import { OrderDetailScreen } from '../screens/OrderDetailScreen';
 import { RouteSummaryModalOrScreen } from '../screens/RouteSummaryModalOrScreen';
+import { MapRouteScreen } from '../screens/MapRouteScreen';
 
 export type RootStackParamList = {
   WelcomeScreen: undefined;
@@ -24,6 +25,7 @@ export type RootStackParamList = {
   CreateOrderScreen: undefined;
   OrderDetailScreen: { orderId: string };
   RouteSummaryModalOrScreen: undefined;
+  MapRouteScreen: undefined;
 };
 
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -68,6 +70,13 @@ export const RootNavigator: React.FC = () => {
           options={{
             animation: 'slide_from_bottom',
             presentation: 'modal',
+          }}
+        />
+        <Stack.Screen
+          name="MapRouteScreen"
+          component={MapRouteScreen}
+          options={{
+            animation: 'slide_from_right',
           }}
         />
       </Stack.Navigator>

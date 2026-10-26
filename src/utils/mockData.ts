@@ -41,6 +41,8 @@ export const INITIAL_ORDERS: Order[] = [
     scheduledTime: '08:30 - 10:00 AM',
     notes: 'Entregar por puerta posterior de carga y descarga antes de las 10am.',
     driverAssigned: 'Jorge Luis Huamán (Furgón 05)',
+    latitude: -12.1355,
+    longitude: -76.9961,
     createdAt: new Date(Date.now() - 3600000 * 3).toISOString(),
   },
   {
@@ -76,6 +78,8 @@ export const INITIAL_ORDERS: Order[] = [
     scheduledTime: '10:00 - 11:30 AM',
     notes: '¡URGENTE! Se quedaron sin gas en cocina principal. Llevar válvula de seguridad.',
     driverAssigned: 'Carlos Mendoza (Camión 02)',
+    latitude: -12.0969,
+    longitude: -77.0347,
     createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
   },
   {
@@ -111,6 +115,8 @@ export const INITIAL_ORDERS: Order[] = [
     scheduledTime: '11:00 - 12:30 PM',
     notes: 'Subir por ascensor principal. Preguntar por la Lic. Rocío en recepción.',
     driverAssigned: 'Miguel Flores (Moto 01)',
+    latitude: -12.0984,
+    longitude: -77.0016,
     createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
   },
   {
@@ -146,6 +152,8 @@ export const INITIAL_ORDERS: Order[] = [
     scheduledTime: '11:30 - 01:00 PM',
     notes: 'Pagarán con billete de S/. 200 y S/. 50. Llevar vuelto exacto.',
     driverAssigned: 'Carlos Mendoza (Camión 02)',
+    latitude: -12.1192,
+    longitude: -77.0298,
     createdAt: new Date(Date.now() - 3600000 * 1.5).toISOString(),
   },
   {
@@ -174,6 +182,8 @@ export const INITIAL_ORDERS: Order[] = [
     scheduledTime: '08:00 - 09:00 AM',
     notes: 'Dejar bidones en la puerta. Ya yapeó comprobante al WhatsApp.',
     driverAssigned: 'Jorge Luis Huamán (Furgón 05)',
+    latitude: -12.0945,
+    longitude: -77.0390,
     createdAt: new Date(Date.now() - 3600000 * 6).toISOString(),
     deliveredAt: new Date(Date.now() - 3600000 * 5).toISOString(),
   },
@@ -203,6 +213,8 @@ export const INITIAL_ORDERS: Order[] = [
     scheduledTime: '09:00 - 10:30 AM',
     notes: 'Entrega conforme realizada y recibida por maestro de cocina.',
     driverAssigned: 'Carlos Mendoza (Camión 02)',
+    latitude: -12.0797,
+    longitude: -76.9458,
     createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
     deliveredAt: new Date(Date.now() - 3600000 * 3.5).toISOString(),
   },
@@ -239,6 +251,8 @@ export const INITIAL_ORDERS: Order[] = [
     scheduledTime: '12:00 - 02:00 PM',
     notes: 'Cliente canceló el pedido por postergación de mantenimiento general.',
     driverAssigned: 'Roberto Quispe (Camión 01)',
+    latitude: -12.0450,
+    longitude: -76.9200,
     createdAt: new Date(Date.now() - 3600000 * 7).toISOString(),
   },
 ];
