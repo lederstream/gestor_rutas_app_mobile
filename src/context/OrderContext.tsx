@@ -1,11 +1,20 @@
 /**
  * ============================================================================
  * CONTEXT API: OrderContext.tsx
- * In-memory enterprise state management with useReducer & memoized selectors
+ * State management with AsyncStorage Persistence and Dynamic Priority
  * ============================================================================
  */
 
-import React, { createContext, useContext, useReducer, useMemo, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+} from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Order,
   OrderFilter,
@@ -17,9 +26,11 @@ import {
   orderReducer,
   initialOrderState,
   OrderState,
-  initialFilter,
 } from './orderReducer';
 import { calculateOrderStatistics, calculateRouteLoad } from '../utils/formatters';
+import { getDynamicPriority } from '../utils/priorityHelper';
+
+const STORAGE_KEY = '@gestor_rutas_orders_v2';
 
 export interface OrderContextType {
   state: OrderState;
@@ -28,25 +39,75 @@ export interface OrderContextType {
   statistics: OrderStatistics;
   routeLoad: RouteLoadItem[];
   filter: OrderFilter;
+  isLoading: boolean;
   // Actions
   addOrder: (order: Order) => void;
   updateOrder: (order: Order) => void;
   updateOrderStatus: (id: string, status: OrderStatus, deliveredAt?: string) => void;
   deleteOrder: (id: string) => void;
+  clearAllOrders: () => void;
   setFilter: (filter: Partial<OrderFilter>) => void;
   resetFilters: () => void;
-  resetToMockData: () => void;
   getOrderById: (id: string) => Order | undefined;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
-export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [state, dispatch] = useReducer(orderReducer, initialOrderState);
+  const isLoadedRef = useRef(false);
+
+  // 1. Load saved orders from AsyncStorage on startup
+  useEffect(() => {
+    const loadSavedOrders = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed: Order[] = JSON.parse(stored);
+          dispatch({ type: 'SET_ORDERS', payload: parsed });
+        } else {
+          dispatch({ type: 'SET_ORDERS', payload: [] });
+        }
+      } catch (err) {
+        console.warn('Error loading orders from AsyncStorage', err);
+        dispatch({ type: 'SET_ORDERS', payload: [] });
+      } finally {
+        isLoadedRef.current = true;
+      }
+    };
+
+    loadSavedOrders();
+  }, []);
+
+  // 2. Automatically save orders to AsyncStorage on change
+  useEffect(() => {
+    if (!isLoadedRef.current) return;
+    const saveOrders = async () => {
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state.orders));
+      } catch (err) {
+        console.warn('Error saving orders to AsyncStorage', err);
+      }
+    };
+    saveOrders();
+  }, [state.orders]);
+
+  // Orders enriched with dynamic auto-priority based on real waiting time
+  const enrichedOrders = useMemo(() => {
+    return state.orders.map((order) => {
+      const dynamicInfo = getDynamicPriority(order);
+      return {
+        ...order,
+        priority: dynamicInfo.priority,
+      };
+    });
+  }, [state.orders]);
 
   // Memoized Filtered Orders
   const filteredOrders = useMemo(() => {
-    return state.orders.filter((order) => {
+    return enrichedOrders.filter((order) => {
       // 1. Status Filter
       if (state.filter.status !== 'ALL' && order.status !== state.filter.status) {
         return false;
@@ -68,7 +129,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return false;
       }
 
-      // 4. District Filter
+      // 4. District / City Filter
       if (
         state.filter.district !== 'ALL' &&
         order.district.toLowerCase() !== state.filter.district.toLowerCase()
@@ -91,19 +152,19 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       return true;
     });
-  }, [state.orders, state.filter]);
+  }, [enrichedOrders, state.filter]);
 
-  // Memoized Logistics Statistics
+  // Memoized Statistics
   const statistics = useMemo(() => {
-    return calculateOrderStatistics(state.orders);
-  }, [state.orders]);
+    return calculateOrderStatistics(enrichedOrders);
+  }, [enrichedOrders]);
 
-  // Memoized Delivery Truck Load
+  // Memoized Route Load
   const routeLoad = useMemo(() => {
-    return calculateRouteLoad(state.orders);
-  }, [state.orders]);
+    return calculateRouteLoad(enrichedOrders);
+  }, [enrichedOrders]);
 
-  // Action Helpers with useCallback
+  // Actions
   const addOrder = useCallback((order: Order) => {
     dispatch({ type: 'ADD_ORDER', payload: order });
   }, []);
@@ -126,6 +187,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     dispatch({ type: 'DELETE_ORDER', payload: { id } });
   }, []);
 
+  const clearAllOrders = useCallback(() => {
+    dispatch({ type: 'CLEAR_ALL_ORDERS' });
+    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+  }, []);
+
   const setFilter = useCallback((filter: Partial<OrderFilter>) => {
     dispatch({ type: 'SET_FILTER', payload: filter });
   }, []);
@@ -134,36 +200,34 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     dispatch({ type: 'RESET_FILTERS' });
   }, []);
 
-  const resetToMockData = useCallback(() => {
-    dispatch({ type: 'RESET_TO_MOCK' });
-  }, []);
-
   const getOrderById = useCallback(
     (id: string) => {
-      return state.orders.find((ord) => ord.id === id);
+      return enrichedOrders.find((ord) => ord.id === id);
     },
-    [state.orders]
+    [enrichedOrders]
   );
 
   const contextValue: OrderContextType = useMemo(
     () => ({
       state,
-      orders: state.orders,
+      orders: enrichedOrders,
       filteredOrders,
       statistics,
       routeLoad,
       filter: state.filter,
+      isLoading: state.isLoading,
       addOrder,
       updateOrder,
       updateOrderStatus,
       deleteOrder,
+      clearAllOrders,
       setFilter,
       resetFilters,
-      resetToMockData,
       getOrderById,
     }),
     [
       state,
+      enrichedOrders,
       filteredOrders,
       statistics,
       routeLoad,
@@ -171,9 +235,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       updateOrder,
       updateOrderStatus,
       deleteOrder,
+      clearAllOrders,
       setFilter,
       resetFilters,
-      resetToMockData,
       getOrderById,
     ]
   );
@@ -183,10 +247,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 };
 
-/**
- * Custom Hook: useOrders
- * Encapsulates access to OrderContext with type-safety & runtime validation
- */
 export const useOrders = (): OrderContextType => {
   const context = useContext(OrderContext);
   if (!context) {

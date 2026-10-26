@@ -9,7 +9,13 @@ export type OrderStatus = 'PENDING' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
 
 export type OrderPriority = 'URGENT' | 'HIGH' | 'NORMAL';
 
-export type ProductCategory = 'WATER' | 'GAS' | 'BAKERY' | 'CLEANING';
+export type ProductCategory =
+  | 'GENERAL'
+  | 'FOOD'
+  | 'SERVICES'
+  | 'PARCEL'
+  | 'OTHER'
+  | string;
 
 export type PaymentMethod = 'CASH' | 'YAPE_PLIN' | 'CARD_POS' | 'TRANSFER';
 
@@ -20,7 +26,7 @@ export interface OrderItem {
   name: string;
   quantity: number;
   unitPrice: number;
-  unit: string; // 'bidón 20L', 'balón 10kg', 'saco 50kg', 'galonera 4L', etc.
+  unit?: string;
 }
 
 export interface Order {

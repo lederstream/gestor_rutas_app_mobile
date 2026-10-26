@@ -1,20 +1,21 @@
 /**
  * ============================================================================
  * STATE MANAGEMENT REDUCER: orderReducer.ts
- * Pure reducer handling deterministic state mutations for Orders
+ * Pure reducer handling state mutations for User-Driven Orders without Demo Data
  * ============================================================================
  */
 
 import { Order, OrderFilter, OrderStatus } from '../models/Order';
-import { INITIAL_ORDERS } from '../utils/mockData';
 
 export interface OrderState {
   orders: Order[];
   filter: OrderFilter;
   selectedOrderId: string | null;
+  isLoading: boolean;
 }
 
 export type OrderAction =
+  | { type: 'SET_ORDERS'; payload: Order[] }
   | { type: 'ADD_ORDER'; payload: Order }
   | { type: 'UPDATE_ORDER'; payload: Order }
   | {
@@ -22,10 +23,11 @@ export type OrderAction =
       payload: { id: string; status: OrderStatus; deliveredAt?: string };
     }
   | { type: 'DELETE_ORDER'; payload: { id: string } }
+  | { type: 'CLEAR_ALL_ORDERS' }
   | { type: 'SET_FILTER'; payload: Partial<OrderFilter> }
   | { type: 'RESET_FILTERS' }
-  | { type: 'RESET_TO_MOCK' }
-  | { type: 'SELECT_ORDER'; payload: string | null };
+  | { type: 'SELECT_ORDER'; payload: string | null }
+  | { type: 'SET_LOADING'; payload: boolean };
 
 export const initialFilter: OrderFilter = {
   status: 'ALL',
@@ -35,14 +37,24 @@ export const initialFilter: OrderFilter = {
   searchQuery: '',
 };
 
+// Initial state starts completely clean (NO demo data)
 export const initialOrderState: OrderState = {
-  orders: INITIAL_ORDERS,
+  orders: [],
   filter: initialFilter,
   selectedOrderId: null,
+  isLoading: true,
 };
 
 export function orderReducer(state: OrderState, action: OrderAction): OrderState {
   switch (action.type) {
+    case 'SET_ORDERS': {
+      return {
+        ...state,
+        orders: action.payload,
+        isLoading: false,
+      };
+    }
+
     case 'ADD_ORDER': {
       return {
         ...state,
@@ -72,7 +84,6 @@ export function orderReducer(state: OrderState, action: OrderAction): OrderState
             deliveredAt: isDelivered
               ? deliveredAt || new Date().toISOString()
               : ord.deliveredAt,
-            // If delivered, mark paymentStatus as PAID if cash or card
             paymentStatus: isDelivered ? 'PAID' : ord.paymentStatus,
           };
         }),
@@ -87,6 +98,14 @@ export function orderReducer(state: OrderState, action: OrderAction): OrderState
           state.selectedOrderId === action.payload.id
             ? null
             : state.selectedOrderId,
+      };
+    }
+
+    case 'CLEAR_ALL_ORDERS': {
+      return {
+        ...state,
+        orders: [],
+        selectedOrderId: null,
       };
     }
 
@@ -107,18 +126,17 @@ export function orderReducer(state: OrderState, action: OrderAction): OrderState
       };
     }
 
-    case 'RESET_TO_MOCK': {
-      return {
-        ...state,
-        orders: INITIAL_ORDERS,
-        filter: initialFilter,
-      };
-    }
-
     case 'SELECT_ORDER': {
       return {
         ...state,
         selectedOrderId: action.payload,
+      };
+    }
+
+    case 'SET_LOADING': {
+      return {
+        ...state,
+        isLoading: action.payload,
       };
     }
 

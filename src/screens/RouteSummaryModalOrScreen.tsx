@@ -21,7 +21,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useOrders } from '../context/OrderContext';
-import { COLORS, CATEGORY_CONFIG } from '../utils/constants';
+import { COLORS } from '../utils/constants';
 import { formatCurrency } from '../utils/formatters';
 import { Header } from '../components/common/Header';
 import { CustomButton } from '../components/common/CustomButton';
@@ -186,25 +186,24 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
 
           <View style={styles.loadGrid}>
             {routeLoad.map((item) => {
-              const config = CATEGORY_CONFIG[item.category];
               return (
                 <View key={item.category} style={styles.loadBox}>
                   <View
                     style={[
                       styles.loadIconCircle,
-                      { backgroundColor: config.bg },
+                      { backgroundColor: '#EFF6FF' },
                     ]}
                   >
                     <Ionicons
-                      name={config.icon as any}
+                      name="cube-outline"
                       size={20}
-                      color={config.color}
+                      color={COLORS.primary}
                     />
                   </View>
                   <Text style={styles.loadQuantity}>{item.totalQuantity}</Text>
                   <Text style={styles.loadUnitText}>{item.unit}</Text>
                   <Text style={styles.loadCategoryLabel} numberOfLines={1}>
-                    {config.label.split(' ')[0]}
+                    {item.label}
                   </Text>
                 </View>
               );

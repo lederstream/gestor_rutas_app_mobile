@@ -32,8 +32,16 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   onPress,
   onQuickStatusChange,
 }) => {
-  const categoryConfig = CATEGORY_CONFIG[order.category];
-  const paymentConfig = PAYMENT_METHOD_CONFIG[order.paymentMethod];
+  const categoryConfig = (CATEGORY_CONFIG as any)[order.category] || {
+    label: order.category || 'Servicio',
+    icon: 'cube-outline',
+    color: COLORS.primary,
+    bg: '#EFF6FF',
+  };
+  const paymentConfig = PAYMENT_METHOD_CONFIG[order.paymentMethod] || {
+    label: 'Pago',
+    icon: 'cash-outline',
+  };
 
   // Aggregate items summary
   const itemsSummary = order.items
@@ -56,7 +64,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 
   const handleOpenGps = (e: any) => {
     e.stopPropagation?.();
-    const fullAddress = `${order.deliveryAddress}, ${order.district}, Lima, Perú`;
+    const fullAddress = `${order.deliveryAddress}, ${order.district}`;
     const encoded = encodeURIComponent(fullAddress);
     const url = Platform.select({
       ios: `maps://?daddr=${encoded}&dirflg=d`,

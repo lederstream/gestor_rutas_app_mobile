@@ -1,11 +1,11 @@
 /**
  * ============================================================================
  * SCREEN: MapRouteScreen.tsx
- * Interactive GPS Navigation & Multi-stop Route Map (InDrive/Uber Driver Style)
+ * Mapa de Rutas Interactivo con vista de TODOS los pines de un solo vistazo
  * ============================================================================
  */
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,73 +24,60 @@ import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useOrders } from '../context/OrderContext';
 import { Order, OrderStatus } from '../models/Order';
-import {
-  COLORS,
-  CATEGORY_CONFIG,
-  STATUS_CONFIG,
-  DISTRICT_COORDINATES,
-} from '../utils/constants';
-import { formatCurrency, formatPhone } from '../utils/formatters';
-import { StatusBadge } from '../components/orders/StatusBadge';
+import { COLORS } from '../utils/constants';
+import { formatCurrency } from '../utils/formatters';
 import { PriorityBadge } from '../components/orders/PriorityBadge';
+import { getDynamicPriority } from '../utils/priorityHelper';
 
 const { width } = Dimensions.get('window');
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MapRouteScreen'>;
 
-// Default initial Lima region
-const INITIAL_REGION: Region = {
+// Región inicial por defecto
+const DEFAULT_INITIAL_REGION: Region = {
   latitude: -12.1050,
   longitude: -77.0150,
-  latitudeDelta: 0.12,
-  longitudeDelta: 0.12,
+  latitudeDelta: 0.15,
+  longitudeDelta: 0.15,
 };
 
 export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
   const { orders, updateOrderStatus } = useOrders();
   const mapRef = useRef<MapView>(null);
+  const isMapReadyRef = useRef(false);
 
-  // Filter state for the map
+  // Filtro de estado
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
 
-  // Selected Order for the bottom sheet preview
+  // Pedido seleccionado para preview
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
-  // Filtered orders with valid coordinates
+  // Órdenes mapeadas con coordenadas válidas
   const mappedOrders = useMemo(() => {
     return orders
       .filter((o) => {
         if (statusFilter !== 'ALL' && o.status !== statusFilter) return false;
-        return true;
+        // Solo considerar los que tengan coordenadas
+        return typeof o.latitude === 'number' && typeof o.longitude === 'number';
       })
       .map((order, index) => {
-        // Fallback to district coordinate if order has no explicit latitude
-        let lat = order.latitude;
-        let lng = order.longitude;
-        if (!lat || !lng) {
-          const fallback = DISTRICT_COORDINATES[order.district] || {
-            latitude: -12.0984,
-            longitude: -77.0016,
-          };
-          lat = fallback.latitude;
-          lng = fallback.longitude;
-        }
+        const dynamicInfo = getDynamicPriority(order);
         return {
           ...order,
-          latitude: lat,
-          longitude: lng,
+          latitude: order.latitude as number,
+          longitude: order.longitude as number,
           stopIndex: index + 1,
+          dynamicInfo,
         };
       });
   }, [orders, statusFilter]);
 
-  // Active order to show in bottom sheet (selected or first in transit / pending)
+  // Pedido activo en la tarjeta flotante inferior
   const activeOrder = useMemo(() => {
     if (selectedOrder) {
       const found = mappedOrders.find((o) => o.id === selectedOrder.id);
       if (found) return found;
     }
-    // Default to the first in-transit or pending order
     return (
       mappedOrders.find((o) => o.status === 'IN_TRANSIT') ||
       mappedOrders.find((o) => o.status === 'PENDING') ||
@@ -99,34 +86,51 @@ export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
     );
   }, [selectedOrder, mappedOrders]);
 
-  // Center on active stops
-  const handleRecenter = () => {
+  // Función clave: Ajustar el mapa para mostrar TODOS los pines de un solo vistazo
+  const handleFitAllPins = () => {
     if (!mapRef.current || mappedOrders.length === 0) return;
-
-    if (mappedOrders.length === 1) {
-      mapRef.current.animateToRegion({
-        latitude: mappedOrders[0].latitude,
-        longitude: mappedOrders[0].longitude,
-        latitudeDelta: 0.03,
-        longitudeDelta: 0.03,
-      });
-      return;
-    }
 
     const coordinates = mappedOrders.map((o) => ({
       latitude: o.latitude,
       longitude: o.longitude,
     }));
 
+    if (coordinates.length === 1) {
+      mapRef.current.animateToRegion(
+        {
+          latitude: coordinates[0].latitude,
+          longitude: coordinates[0].longitude,
+          latitudeDelta: 0.02,
+          longitudeDelta: 0.02,
+        },
+        500
+      );
+      return;
+    }
+
     mapRef.current.fitToCoordinates(coordinates, {
-      edgePadding: { top: 80, right: 60, bottom: 260, left: 60 },
+      edgePadding: { top: 140, right: 60, bottom: 270, left: 60 },
       animated: true,
     });
   };
 
-  // Launch Google Maps or Waze directly
+  // Ajustar cámara cuando el mapa esté listo y cuando cambien los pedidos
+  const onMapReady = () => {
+    isMapReadyRef.current = true;
+    setTimeout(() => {
+      handleFitAllPins();
+    }, 400);
+  };
+
+  useEffect(() => {
+    if (isMapReadyRef.current && mappedOrders.length > 0) {
+      handleFitAllPins();
+    }
+  }, [mappedOrders.length, statusFilter]);
+
+  // Navegar con GPS hacia la parada
   const handleOpenNavigation = (order: Order) => {
-    const fullAddress = `${order.deliveryAddress}, ${order.district}, Lima, Perú`;
+    const fullAddress = `${order.deliveryAddress}, ${order.district}`;
     const encoded = encodeURIComponent(fullAddress);
 
     Alert.alert(
@@ -143,9 +147,7 @@ export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
             });
             Linking.canOpenURL(url)
               .then((supported) => {
-                if (supported) {
-                  return Linking.openURL(url);
-                }
+                if (supported) return Linking.openURL(url);
                 return Linking.openURL(
                   `https://www.google.com/maps/dir/?api=1&destination=${encoded}`
                 );
@@ -174,31 +176,40 @@ export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
     );
   };
 
-  // Call customer
   const handleCall = (phone: string, name: string) => {
     Linking.openURL(`tel:${phone}`).catch(() => {
       Alert.alert('Llamar', `Llamar a ${name}: ${phone}`);
     });
   };
 
-  // WhatsApp
   const handleWhatsApp = (phone: string, name: string, code: string) => {
     const text = encodeURIComponent(
-      `Hola ${name}, te saludamos de Gestor de Rutas. Estamos en camino con tu pedido ${code}.`
+      `Hola ${name}, te saludamos de Gestor de Rutas. Estamos en camino con tu entrega ${code}.`
     );
     Linking.openURL(`https://wa.me/51${phone}?text=${text}`);
   };
 
-  // Status transitions
   const handleStatusChange = (order: Order, nextStatus: OrderStatus) => {
     updateOrderStatus(order.id, nextStatus);
   };
+
+  const initialRegion = useMemo(() => {
+    if (mappedOrders.length > 0) {
+      return {
+        latitude: mappedOrders[0].latitude,
+        longitude: mappedOrders[0].longitude,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.1,
+      };
+    }
+    return DEFAULT_INITIAL_REGION;
+  }, [mappedOrders]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Top Floating Header & Filter Bar */}
+      {/* Cabecera Flotante Superior */}
       <View style={styles.topHeader}>
         <View style={styles.headerRow}>
           <TouchableOpacity
@@ -210,22 +221,24 @@ export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
 
           <View style={styles.titleContainer}>
-            <Text style={styles.screenTitle}>Mapa de Repartos en Vivo</Text>
+            <Text style={styles.screenTitle}>Mapa de Ruta Completa</Text>
             <Text style={styles.screenSubtitle}>
-              {mappedOrders.length} {mappedOrders.length === 1 ? 'parada' : 'paradas'} en ruta
+              {mappedOrders.length === 0
+                ? 'Sin paradas con GPS'
+                : `${mappedOrders.length} ${mappedOrders.length === 1 ? 'parada visible' : 'paradas visibles a la vez'}`}
             </Text>
           </View>
 
           <TouchableOpacity
             style={styles.iconButton}
-            onPress={handleRecenter}
+            onPress={handleFitAllPins}
             activeOpacity={0.7}
           >
-            <Ionicons name="locate" size={22} color={COLORS.primary} />
+            <Ionicons name="expand" size={20} color={COLORS.primary} />
           </TouchableOpacity>
         </View>
 
-        {/* Filter Chips */}
+        {/* Pestañas de Filtro */}
         <View style={styles.filterChipsRow}>
           {(['ALL', 'IN_TRANSIT', 'PENDING', 'DELIVERED'] as const).map(
             (status) => {
@@ -242,19 +255,11 @@ export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
               return (
                 <TouchableOpacity
                   key={status}
-                  style={[
-                    styles.chip,
-                    isActive && styles.chipActive,
-                  ]}
+                  style={[styles.chip, isActive && styles.chipActive]}
                   onPress={() => setStatusFilter(status)}
                   activeOpacity={0.8}
                 >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      isActive && styles.chipTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
                     {label}
                   </Text>
                 </TouchableOpacity>
@@ -262,18 +267,32 @@ export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
             }
           )}
         </View>
+
+        {/* Botón de ajuste total a 1 solo vistazo */}
+        {mappedOrders.length > 1 && (
+          <TouchableOpacity
+            style={styles.fitAllButton}
+            onPress={handleFitAllPins}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="scan-outline" size={14} color="#0284C7" />
+            <Text style={styles.fitAllButtonText}>
+              Ver todas las paradas en un solo vistazo
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Interactive Map */}
+      {/* Mapa Satelital / Vectorial */}
       <MapView
         ref={mapRef}
         provider={PROVIDER_DEFAULT}
         style={styles.map}
-        initialRegion={INITIAL_REGION}
+        initialRegion={initialRegion}
         showsUserLocation={true}
         showsCompass={true}
-        showsScale={true}
         loadingEnabled={true}
+        onMapReady={onMapReady}
       >
         {mappedOrders.map((order) => {
           const isSelected = activeOrder?.id === order.id;
@@ -294,7 +313,7 @@ export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
                 longitude: order.longitude,
               }}
               title={order.customerName}
-              description={`${order.deliveryAddress} - ${order.district}`}
+              description={`${order.deliveryAddress} (${order.district}) - ${order.dynamicInfo.timeLabel}`}
               onPress={() => setSelectedOrder(order)}
             >
               <View
@@ -304,27 +323,39 @@ export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
                   isSelected && styles.markerPinSelected,
                 ]}
               >
-                <Ionicons
-                  name={
-                    order.status === 'DELIVERED'
-                      ? 'checkmark-outline'
-                      : 'navigate'
-                  }
-                  size={14}
-                  color="#FFFFFF"
-                />
-                <Text style={styles.markerText}>{order.stopIndex}</Text>
+                <Text style={styles.markerText}>#{order.stopIndex}</Text>
               </View>
             </Marker>
           );
         })}
       </MapView>
 
-      {/* Bottom Floating Order Card (InDrive / Uber Driver Style) */}
+      {/* Estado Vacío si no hay pedidos */}
+      {mappedOrders.length === 0 && (
+        <View style={styles.emptyMapOverlay}>
+          <View style={styles.emptyIconCircle}>
+            <Ionicons name="map-outline" size={32} color={COLORS.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>No hay paradas en el mapa</Text>
+          <Text style={styles.emptySubtitle}>
+            Registra tu primer pedido con ubicación para visualizarlo con sus pines de ruta.
+          </Text>
+          <TouchableOpacity
+            style={styles.emptyButton}
+            onPress={() => navigation.navigate('CreateOrderScreen')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.emptyButtonText}>Crear Pedido</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Tarjeta Flotante Inferior del Pedido Activo */}
       {activeOrder && (
         <View style={styles.bottomCardWrapper}>
           <View style={styles.card}>
-            {/* Stop Sequence & Urgency Header */}
+            {/* Cabecera de la Parada */}
             <View style={styles.cardHeader}>
               <View style={styles.stopBadge}>
                 <Text style={styles.stopBadgeNumber}>#{activeOrder.stopIndex}</Text>
@@ -333,13 +364,20 @@ export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
                     ? 'EN CAMINO'
                     : activeOrder.status === 'DELIVERED'
                     ? 'ENTREGADO'
-                    : 'SIGUIENTE PARADA'}
+                    : 'PARADA SIGUIENTE'}
                 </Text>
               </View>
-              <PriorityBadge priority={activeOrder.priority} size="sm" />
+
+              {/* Urgencia Automática */}
+              <View style={[styles.waitBadge, { backgroundColor: activeOrder.dynamicInfo.badgeBg }]}>
+                <Ionicons name="time-outline" size={12} color={activeOrder.dynamicInfo.badgeColor} />
+                <Text style={[styles.waitBadgeText, { color: activeOrder.dynamicInfo.badgeColor }]}>
+                  {activeOrder.dynamicInfo.timeLabel}
+                </Text>
+              </View>
             </View>
 
-            {/* Customer & Address */}
+            {/* Datos del Cliente y Dirección */}
             <View style={styles.customerRow}>
               <View style={styles.customerInfo}>
                 <Text style={styles.customerName} numberOfLines={1}>
@@ -363,7 +401,7 @@ export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
                 ) : null}
               </View>
 
-              {/* Quick Contact Buttons */}
+              {/* Botones de Contacto */}
               <View style={styles.quickContactsCol}>
                 <TouchableOpacity
                   style={styles.circleContactBtn}
@@ -391,10 +429,10 @@ export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             </View>
 
-            {/* Financial and Order Summary */}
+            {/* Cobro y Enlace de Detalle */}
             <View style={styles.financialRow}>
               <View>
-                <Text style={styles.amountLabel}>Monto a Cobrar</Text>
+                <Text style={styles.amountLabel}>Total a Cobrar</Text>
                 <Text style={styles.amountValue}>
                   {formatCurrency(activeOrder.totalAmount)}
                 </Text>
@@ -408,7 +446,7 @@ export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
                   })
                 }
               >
-                <Text style={styles.detailLinkText}>Ver Detalle</Text>
+                <Text style={styles.detailLinkText}>Ver Detalle Completo</Text>
                 <Ionicons
                   name="chevron-forward"
                   size={14}
@@ -417,7 +455,7 @@ export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
               </TouchableOpacity>
             </View>
 
-            {/* Driver Actions (GPS + Status) */}
+            {/* Botones de Acción para el Conductor */}
             <View style={styles.actionButtonsRow}>
               <TouchableOpacity
                 style={styles.gpsPrimaryButton}
@@ -468,8 +506,8 @@ const styles = StyleSheet.create({
   topHeader: {
     position: 'absolute',
     top: 50,
-    left: 16,
-    right: 16,
+    left: 14,
+    right: 14,
     zIndex: 10,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
@@ -484,7 +522,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   iconButton: {
     width: 38,
@@ -505,7 +543,7 @@ const styles = StyleSheet.create({
   screenSubtitle: {
     fontSize: 12,
     color: COLORS.textMuted,
-    marginTop: 2,
+    marginTop: 1,
   },
   filterChipsRow: {
     flexDirection: 'row',
@@ -533,36 +571,102 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
-  markerPin: {
+  fitAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    borderRadius: 8,
+    paddingVertical: 6,
+    gap: 6,
+    marginTop: 8,
+  },
+  fitAllButtonText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0284C7',
+  },
+  markerPin: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
     borderRadius: 14,
     borderWidth: 2,
     borderColor: '#FFFFFF',
-    elevation: 5,
+    elevation: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
     shadowRadius: 4,
-    gap: 3,
   },
   markerPinSelected: {
-    borderColor: '#000000',
-    transform: [{ scale: 1.15 }],
+    borderColor: '#0F172A',
+    transform: [{ scale: 1.2 }],
   },
   markerText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '900',
   },
+  emptyMapOverlay: {
+    position: 'absolute',
+    top: '38%',
+    left: 24,
+    right: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+  emptyIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 8,
+  },
+  emptyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
   bottomCardWrapper: {
     position: 'absolute',
     bottom: 24,
-    left: 16,
-    right: 16,
+    left: 14,
+    right: 14,
     zIndex: 10,
   },
   card: {
@@ -600,6 +704,18 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.primary,
     letterSpacing: 0.5,
+  },
+  waitBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  waitBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   customerRow: {
     flexDirection: 'row',

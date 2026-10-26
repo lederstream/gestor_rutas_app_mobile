@@ -32,6 +32,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'OrderListScreen'>;
 
 export const OrderListScreen: React.FC<Props> = ({ navigation }) => {
   const {
+    orders,
     filteredOrders,
     statistics,
     filter,
@@ -217,31 +218,25 @@ export const OrderListScreen: React.FC<Props> = ({ navigation }) => {
               Todos los rubros
             </Text>
           </TouchableOpacity>
-          {(['WATER', 'GAS', 'BAKERY', 'CLEANING'] as ProductCategory[]).map(
+          {Array.from(new Set(orders.map((o) => o.category).filter(Boolean))).map(
             (cat) => {
               const isSelected = filter.category === cat;
-              const config = CATEGORY_CONFIG[cat];
               return (
                 <TouchableOpacity
                   key={cat}
                   style={[
                     styles.categoryChip,
-                    isSelected && { backgroundColor: config.color, borderColor: config.color },
+                    isSelected && { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
                   ]}
                   onPress={() => handleCategoryFilterChange(cat)}
                 >
-                  <Ionicons
-                    name={config.icon as any}
-                    size={13}
-                    color={isSelected ? '#FFF' : config.color}
-                  />
                   <Text
                     style={[
                       styles.categoryChipText,
                       isSelected && styles.categoryChipTextActive,
                     ]}
                   >
-                    {config.label.split(' ')[0]}
+                    {cat}
                   </Text>
                 </TouchableOpacity>
               );

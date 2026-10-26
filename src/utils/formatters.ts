@@ -6,7 +6,6 @@
  */
 
 import { Order, OrderStatistics, RouteLoadItem } from '../models/Order';
-import { CATEGORY_CONFIG } from './constants';
 
 /**
  * Format numerical amount to Peruvian Soles (S/.)
@@ -106,23 +105,21 @@ export const calculateRouteLoad = (orders: Order[]): RouteLoadItem[] => {
     (o) => o.status === 'PENDING' || o.status === 'IN_TRANSIT'
   );
 
-  const loadMap: Record<string, { count: number; unit: string; label: string }> = {
-    WATER: { count: 0, unit: 'Bidones', label: CATEGORY_CONFIG.WATER.label },
-    GAS: { count: 0, unit: 'Balones', label: CATEGORY_CONFIG.GAS.label },
-    BAKERY: { count: 0, unit: 'Sacos/Cajas', label: CATEGORY_CONFIG.BAKERY.label },
-    CLEANING: { count: 0, unit: 'Galoneras', label: CATEGORY_CONFIG.CLEANING.label },
-  };
+  const loadMap: Record<string, { count: number; unit: string; label: string }> = {};
 
   activeOrders.forEach((order) => {
-    const cat = order.category;
-    if (loadMap[cat]) {
-      const itemsQty = order.items.reduce((sum, item) => sum + item.quantity, 0);
-      loadMap[cat].count += itemsQty;
-    }
+    order.items.forEach((item) => {
+      const key = item.name.trim();
+      const unit = item.unit || 'und';
+      if (!loadMap[key]) {
+        loadMap[key] = { count: 0, unit, label: key };
+      }
+      loadMap[key].count += item.quantity;
+    });
   });
 
-  return Object.entries(loadMap).map(([catKey, value]) => ({
-    category: catKey as any,
+  return Object.entries(loadMap).map(([key, value]) => ({
+    category: key,
     label: value.label,
     totalQuantity: value.count,
     unit: value.unit,
