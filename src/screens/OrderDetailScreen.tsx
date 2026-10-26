@@ -85,7 +85,7 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // WhatsApp simulation
   const handleWhatsApp = () => {
     const text = encodeURIComponent(
-      `Hola ${order.customerName}, le saludamos de RutaPro / DistriExpress. Estamos en camino con su pedido ${order.orderCode}.`
+      `Hola ${order.customerName}, le saludamos de Gestor de Rutas. Estamos en camino con su pedido ${order.orderCode}.`
     );
     Linking.openURL(`https://wa.me/51${order.customerPhone}?text=${text}`).catch(() => {
       Alert.alert(

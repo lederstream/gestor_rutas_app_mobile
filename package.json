@@ -1,7 +1,7 @@
 {
-  "name": "rutapro-mobile",
+  "name": "gestor-rutas-app-mobile",
   "version": "1.0.0",
-  "description": "Sistema Móvil de Logística y Distribución Inmediata - RutaPro Mobile",
+  "description": "Gestor de Rutas Móvil - Sistema de Logística y Distribución Inmediata",
   "main": "App.tsx",
   "scripts": {
     "start": "expo start",

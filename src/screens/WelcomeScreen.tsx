@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * SCREEN: WelcomeScreen.tsx
- * Hero landing screen for RutaPro Mobile with real-time operational overview
+ * Hero landing screen for Gestor de Rutas Móvil with real-time operational overview
  * ============================================================================
  */
 
@@ -41,12 +41,12 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             <Ionicons name="cube" size={32} color={COLORS.primary} />
           </View>
           <View style={styles.taglineBadge}>
-            <Ionicons name="flash" size={12} color={COLORS.accent} />
-            <Text style={styles.taglineText}>LOGÍSTICA INMEDIATA 24/7</Text>
+            <Ionicons name="school-outline" size={12} color={COLORS.accent} />
+            <Text style={styles.taglineText}>DESARROLLO DE APLICACIONES MÓVILES 1</Text>
           </View>
-          <Text style={styles.heroTitle}>RutaPro Mobile</Text>
+          <Text style={styles.heroTitle}>Gestor de Rutas</Text>
           <Text style={styles.heroSubtitle}>
-            Gestión inteligente de pedidos, carga y ruteo para bidones de agua, balones de gas, insumos de panadería y limpieza.
+            Sistema integral de gestión de pedidos, control de carga en vehículo y ruteo de distribución inmediata.
           </Text>
         </View>
 

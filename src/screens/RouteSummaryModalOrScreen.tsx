@@ -69,7 +69,7 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
   // Share / Export Manifest
   const handleShareManifest = async () => {
     const textLines = [
-      '📋 *HOJA DE RUTA Y MANIFIESTO - RUTAPRO MOBILE*',
+      '📋 *HOJA DE RUTA Y MANIFIESTO - GESTOR DE RUTAS*',
       `Fecha: ${new Date().toLocaleDateString('es-PE')}`,
       `Total Despachos: ${statistics.totalOrders} pedidos`,
       `Entregados: ${statistics.deliveredOrders} | En Ruta: ${statistics.inTransitOrders}`,
@@ -88,7 +88,7 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
     try {
       await Share.share({
         message: textLines.join('\n'),
-        title: 'Manifiesto de Ruta - RutaPro Mobile',
+        title: 'Manifiesto de Ruta - Gestor de Rutas',
       });
     } catch {
       Alert.alert(

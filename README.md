@@ -1,5 +1,5 @@
-# 🚚 RutaPro Mobile / DistriExpress
-### Sistema Móvil de Logística y Distribución Inmediata
+# 🚚 Gestor de Rutas Móvil
+### Sistema de Logística y Distribución Inmediata
 > **Evaluación Académica:** Desarrollo de Aplicaciones Móviles 1  
 > **Nivel de Cumplimiento:** SOBRESALIENTE (20/20)  
 > **Tecnologías:** React Native + Expo SDK 52 + TypeScript (Strict Mode)
@@ -7,7 +7,7 @@
 ---
 
 ## 📖 1. Descripción del Proyecto
-**RutaPro Mobile** es una solución móvil integral de ruteo y gestión de entregas inmediatas diseñada para operadores logísticos locales y repartidores de última milla en Lima Metropolitana. La aplicación atiende cuatro rubros de alta rotación:
+**Gestor de Rutas Móvil** es una solución integral de ruteo y gestión de entregas inmediatas diseñada para operadores logísticos locales y repartidores de última milla en Lima Metropolitana. La aplicación atiende cuatro rubros de alta rotación:
 1. **Agua de Mesa Purificada:** Bidones de 20L retornables y packs descartables de 7L.
 2. **Gas Licuado de Petróleo (GLP):** Balones domésticos de 10kg y comerciales de 45kg.
 3. **Insumos de Panadería:** Sacos de harina especial de 50kg, cajas de manteca vegetal y levadura.
@@ -62,7 +62,7 @@ src/
 ## 📱 3. Pantallas y Funcionalidades
 
 ### 1. `WelcomeScreen` (Bienvenida y Tablero General)
-- Hero banner con identidad corporativa de **RutaPro Mobile**.
+- Hero banner con identidad formal de **Gestor de Rutas**.
 - Métricas operativas en vivo (Total pedidos, En ruta activa, Entregados, Cobranza prevista en S/. y Efectividad %).
 - Tarjetas de exhibición de rubros atendidos (Agua, Gas, Panadería, Limpieza).
 - Acceso directo a iniciar ruta, crear pedido o ver la hoja de ruta.

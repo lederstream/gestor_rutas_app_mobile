@@ -1,7 +1,7 @@
 /**
  * ============================================================================
- * DESIGN SYSTEM & CONSTANTS: RutaPro Mobile / DistriExpress
- * Enterprise Theme, Color Tokens, Iconography & Category Mappings
+ * DESIGN SYSTEM & CONSTANTS: Gestor de Rutas Móvil
+ * Tokens de diseño, paleta, configuración de categorías y distritos
  * ============================================================================
  */
 

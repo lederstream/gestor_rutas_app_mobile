@@ -1,7 +1,7 @@
 /**
  * ============================================================================
- * DOMAIN MODELS: Rutapro Mobile / DistriExpress
- * Enterprise Logistics & Immediate Distribution System
+ * DOMAIN MODELS: Gestor de Rutas Móvil
+ * Sistema de Logística y Distribución Inmediata
  * ============================================================================
  */
 
@@ -25,7 +25,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
-  orderCode: string; // e.g. "RP-4012"
+  orderCode: string; // e.g. "GR-1001"
   customerName: string;
   customerPhone: string;
   deliveryAddress: string;

@@ -1,7 +1,7 @@
 /**
  * ============================================================================
- * REALISTIC LOGISTICS MOCK DATA: RutaPro Mobile / DistriExpress
- * Immediate local distribution in metropolitan zones (Water, Gas, Bakery, Cleaning)
+ * DATOS MOCK DE LOGÍSTICA: Gestor de Rutas Móvil
+ * Distribución y despacho inmediato en Lima Metropolitana
  * ============================================================================
  */
 
@@ -10,7 +10,7 @@ import { Order } from '../models/Order';
 export const INITIAL_ORDERS: Order[] = [
   {
     id: 'ord-001',
-    orderCode: 'RP-1001',
+    orderCode: 'GR-1001',
     customerName: 'Pastelería & Panadería Dulce Grano',
     customerPhone: '987654321',
     deliveryAddress: 'Av. Primavera 1240, Chacarilla',
@@ -45,7 +45,7 @@ export const INITIAL_ORDERS: Order[] = [
   },
   {
     id: 'ord-002',
-    orderCode: 'RP-1002',
+    orderCode: 'GR-1002',
     customerName: 'Restaurante & Grill El Carbón',
     customerPhone: '994512308',
     deliveryAddress: 'Calle Las Begonias 450',
@@ -80,7 +80,7 @@ export const INITIAL_ORDERS: Order[] = [
   },
   {
     id: 'ord-003',
-    orderCode: 'RP-1003',
+    orderCode: 'GR-1003',
     customerName: 'Clínica Dental San Borja Sur',
     customerPhone: '978123456',
     deliveryAddress: 'Av. San Borja Sur 832, Piso 2',
@@ -115,7 +115,7 @@ export const INITIAL_ORDERS: Order[] = [
   },
   {
     id: 'ord-004',
-    orderCode: 'RP-1004',
+    orderCode: 'GR-1004',
     customerName: 'Lavandería & Dry Clean Express',
     customerPhone: '951234987',
     deliveryAddress: 'Av. Benavides 2150',
@@ -150,7 +150,7 @@ export const INITIAL_ORDERS: Order[] = [
   },
   {
     id: 'ord-005',
-    orderCode: 'RP-1005',
+    orderCode: 'GR-1005',
     customerName: 'Sra. Mariana Valdivia (Residencial)',
     customerPhone: '942876541',
     deliveryAddress: 'Calle Los Cedros 315, Dpto 402',
@@ -179,7 +179,7 @@ export const INITIAL_ORDERS: Order[] = [
   },
   {
     id: 'ord-006',
-    orderCode: 'RP-1006',
+    orderCode: 'GR-1006',
     customerName: 'Picantería & Cevichería Puerto Norte',
     customerPhone: '965321876',
     deliveryAddress: 'Av. Javier Prado Este 4510',
@@ -208,7 +208,7 @@ export const INITIAL_ORDERS: Order[] = [
   },
   {
     id: 'ord-007',
-    orderCode: 'RP-1007',
+    orderCode: 'GR-1007',
     customerName: 'Condominio Parques de la Huaca',
     customerPhone: '931456789',
     deliveryAddress: 'Av. El Sol 820, Torre B Conserjería',

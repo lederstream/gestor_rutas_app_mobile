@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "RutaPro Mobile",
-    "slug": "rutapro-mobile",
+    "name": "Gestor de Rutas",
+    "slug": "gestor-rutas-app-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",

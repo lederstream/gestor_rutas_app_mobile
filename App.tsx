@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * ENTRY POINT: App.tsx
- * RutaPro Mobile / DistriExpress - Enterprise Logistics & Route Distribution
+ * Gestor de Rutas Móvil - Sistema de Logística y Distribución Inmediata
  * ============================================================================
  */
 

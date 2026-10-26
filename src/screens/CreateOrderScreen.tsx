@@ -133,7 +133,7 @@ export const CreateOrderScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
-    const newOrderCode = `RP-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newOrderCode = `GR-${Math.floor(1000 + Math.random() * 9000)}`;
     const newOrder: Order = {
       id: `ord-${Date.now()}`,
       orderCode: newOrderCode,
