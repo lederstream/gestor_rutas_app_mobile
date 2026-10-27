@@ -68,13 +68,21 @@ export const ProductListScreen: React.FC<Props> = ({ navigation }) => {
     );
   };
 
+  const CATEGORY_EMOJIS: Record<string, string> = {
+    WATER: '💧',
+    GAS: '🔥',
+    BAKERY: '🥖',
+    CLEANING: '🧴',
+    GENERAL: '📦',
+  };
+
   const categoriesAvailable: { key: string; label: string }[] = [
-    { key: 'ALL', label: 'Todos' },
-    { key: 'WATER', label: 'Agua' },
-    { key: 'GAS', label: 'Gas GLP' },
-    { key: 'BAKERY', label: 'Panadería' },
-    { key: 'CLEANING', label: 'Limpieza' },
-    { key: 'GENERAL', label: 'General / Otros' },
+    { key: 'ALL', label: '✨ Todos' },
+    { key: 'WATER', label: '💧 Agua' },
+    { key: 'GAS', label: '🔥 Gas GLP' },
+    { key: 'BAKERY', label: '🥖 Panadería' },
+    { key: 'CLEANING', label: '🧴 Limpieza' },
+    { key: 'GENERAL', label: '📦 General' },
   ];
 
   const renderProductItem = ({ item }: { item: Product }) => {
@@ -85,12 +93,14 @@ export const ProductListScreen: React.FC<Props> = ({ navigation }) => {
       bg: '#EFF6FF',
     };
 
+    const emoji = CATEGORY_EMOJIS[item.category] || '📦';
+
     return (
       <View style={styles.card}>
         <View style={styles.cardMain}>
-          {/* Icono de categoría */}
-          <View style={[styles.iconBox, { backgroundColor: config.bg }]}>
-            <Ionicons name={config.icon as any} size={24} color={config.color} />
+          {/* Icono de categoría con Emoji */}
+          <View style={[styles.iconBox, { backgroundColor: config.bg, borderWidth: 1, borderColor: '#E2E8F0' }]}>
+            <Text style={{ fontSize: 24 }}>{emoji}</Text>
           </View>
 
           {/* Información del Producto */}

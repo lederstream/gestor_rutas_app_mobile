@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * SCREEN: WelcomeScreen.tsx
- * Dashboard Principal: Diseño Claro Premium con Tarjetas Rectangulares Ergonómicas
+ * Dashboard Principal: Tema Claro Premium con Emojis Vivos y Tarjetas Ergonómicas
  * ============================================================================
  */
 
@@ -58,12 +58,12 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {/* =================================================================== */}
-        {/* CABECERA PRINCIPAL TEMA CLARO PREMIUM */}
+        {/* CABECERA PRINCIPAL CON VIDA Y EMOJIS */}
         {/* =================================================================== */}
         <View style={styles.topHeader}>
           <View style={styles.brandRow}>
             <View style={styles.logoBadge}>
-              <Ionicons name="navigate" size={26} color={COLORS.primary} />
+              <Text style={styles.logoEmoji}>🚚</Text>
             </View>
 
             <View style={styles.brandTextCol}>
@@ -75,18 +75,19 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
               </View>
               <Text style={styles.appSubtitle}>
-                Sistema de Logística y Despachos
+                Logística, Clientes y Despachos en Vivo 📍
               </Text>
             </View>
           </View>
 
-          {/* Barra de Resumen Superior (Clientes, Productos, Pedidos) */}
+          {/* Barra de Resumen Superior con Emojis */}
           <View style={styles.metricsPillsRow}>
             <TouchableOpacity
               style={styles.metricPill}
               onPress={() => navigation.navigate('CustomerListScreen')}
+              activeOpacity={0.7}
             >
-              <Ionicons name="people-outline" size={15} color={COLORS.primary} />
+              <Text style={styles.pillEmoji}>👥</Text>
               <Text style={styles.metricPillNumber}>{customers.length}</Text>
               <Text style={styles.metricPillLabel}>Clientes</Text>
             </TouchableOpacity>
@@ -96,8 +97,9 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             <TouchableOpacity
               style={styles.metricPill}
               onPress={() => navigation.navigate('ProductListScreen')}
+              activeOpacity={0.7}
             >
-              <Ionicons name="cube-outline" size={15} color="#D97706" />
+              <Text style={styles.pillEmoji}>🏷️</Text>
               <Text style={styles.metricPillNumber}>{products.length}</Text>
               <Text style={styles.metricPillLabel}>Productos</Text>
             </TouchableOpacity>
@@ -107,8 +109,9 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             <TouchableOpacity
               style={styles.metricPill}
               onPress={() => navigation.navigate('OrderListScreen')}
+              activeOpacity={0.7}
             >
-              <Ionicons name="bicycle-outline" size={15} color={COLORS.success} />
+              <Text style={styles.pillEmoji}>📦</Text>
               <Text style={styles.metricPillNumber}>{orders.length}</Text>
               <Text style={styles.metricPillLabel}>En Cola</Text>
             </TouchableOpacity>
@@ -116,18 +119,18 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         {/* =================================================================== */}
-        {/* MÉTRICAS DE OPERACIÓN DEL DÍA (Tarjetas Blancas con Sombra Suave) */}
+        {/* MÉTRICAS DE OPERACIÓN DEL DÍA */}
         {/* =================================================================== */}
         {orders.length > 0 ? (
           <View style={styles.statsCard}>
             <View style={styles.statsHeader}>
               <View style={styles.statsTitleRow}>
-                <Ionicons name="analytics" size={18} color={COLORS.primary} />
+                <Text style={styles.headerIconEmoji}>📊</Text>
                 <Text style={styles.statsTitle}>Operación de Hoy</Text>
               </View>
 
               <View style={styles.effectivityPill}>
-                <Ionicons name="speedometer-outline" size={13} color={COLORS.success} />
+                <Text style={{ fontSize: 13 }}>🎯</Text>
                 <Text style={styles.effectivityText}>
                   {statistics.completedDeliveriesRate}% Efectividad
                 </Text>
@@ -137,7 +140,10 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.statsValuesGrid}>
               <View style={styles.statCol}>
                 <Text style={styles.statLargeNumber}>{statistics.totalOrders}</Text>
-                <Text style={styles.statLabelText}>Total Pedidos</Text>
+                <View style={styles.statSubRow}>
+                  <Text style={styles.statMiniEmoji}>📦</Text>
+                  <Text style={styles.statLabelText}>Total Pedidos</Text>
+                </View>
               </View>
 
               <View style={styles.statColDivider} />
@@ -146,7 +152,10 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={[styles.statLargeNumber, { color: COLORS.statusInTransit }]}>
                   {statistics.inTransitOrders}
                 </Text>
-                <Text style={styles.statLabelText}>En Ruta</Text>
+                <View style={styles.statSubRow}>
+                  <Text style={styles.statMiniEmoji}>🚚</Text>
+                  <Text style={styles.statLabelText}>En Ruta</Text>
+                </View>
               </View>
 
               <View style={styles.statColDivider} />
@@ -155,14 +164,20 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={[styles.statLargeNumber, { color: COLORS.statusDelivered }]}>
                   {statistics.deliveredOrders}
                 </Text>
-                <Text style={styles.statLabelText}>Entregados</Text>
+                <View style={styles.statSubRow}>
+                  <Text style={styles.statMiniEmoji}>✅</Text>
+                  <Text style={styles.statLabelText}>Entregados</Text>
+                </View>
               </View>
             </View>
 
-            {/* Fila de Recaudación Prevista */}
+            {/* Fila de Recaudación */}
             <View style={styles.revenueRow}>
               <View>
-                <Text style={styles.revenueCaption}>Cobranza Total Prevista</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Text style={{ fontSize: 13 }}>💰</Text>
+                  <Text style={styles.revenueCaption}>Cobranza Prevista</Text>
+                </View>
                 <Text style={styles.revenueAmount}>
                   {formatCurrency(statistics.pendingCollection + statistics.totalRevenue)}
                 </Text>
@@ -177,15 +192,15 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           </View>
         ) : (
-          /* Estado inicial limpio si no hay pedidos */
+          /* Estado inicial amigable cuando aún no hay pedidos cargados */
           <View style={styles.emptyWelcomeCard}>
             <View style={styles.emptyIconCircle}>
-              <Ionicons name="sparkles" size={26} color={COLORS.primary} />
+              <Text style={{ fontSize: 26 }}>✨</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.emptyCardTitle}>Listo para Despachar</Text>
+              <Text style={styles.emptyCardTitle}>¡Listo para Despachar! 🚀</Text>
               <Text style={styles.emptyCardDesc}>
-                Genera tu primer pedido seleccionando un cliente para planificar la ruta en el mapa.
+                Crea tu primer pedido con un cliente registrado para trazar la ruta en el mapa GPS.
               </Text>
             </View>
           </View>
@@ -195,7 +210,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
         {/* ACCIONES PRINCIPALES DESTACADAS */}
         {/* =================================================================== */}
         <View style={styles.sectionTitleWrapper}>
-          <Text style={styles.sectionHeaderTitle}>Acciones Rápidas</Text>
+          <Text style={styles.sectionHeaderTitle}>⚡ Acciones Rápidas</Text>
         </View>
 
         <View style={styles.actionsContainer}>
@@ -206,14 +221,14 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             activeOpacity={0.88}
           >
             <View style={styles.heroIconCircle}>
-              <Ionicons name="add" size={24} color={COLORS.primary} />
+              <Text style={styles.heroEmoji}>➕</Text>
             </View>
 
             <View style={styles.heroTextCol}>
               <View style={styles.heroBadgeRow}>
                 <Text style={styles.heroTitle}>Generar Nuevo Pedido</Text>
                 <View style={styles.heroTag}>
-                  <Text style={styles.heroTagText}>Principal</Text>
+                  <Text style={styles.heroTagText}>Rápido ⚡</Text>
                 </View>
               </View>
               <Text style={styles.heroSubtitle}>
@@ -231,14 +246,14 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             activeOpacity={0.8}
           >
             <View style={styles.mapIconCircle}>
-              <Ionicons name="map" size={22} color={COLORS.primary} />
+              <Text style={{ fontSize: 24 }}>🗺️</Text>
             </View>
 
             <View style={{ flex: 1 }}>
               <Text style={styles.mapActionTitle}>Mapa de Rutas (GPS)</Text>
               <Text style={styles.mapActionSubtitle}>
                 {activeDeliveriesCount > 0
-                  ? `${activeDeliveriesCount} paradas pendientes geolocalizadas`
+                  ? `${activeDeliveriesCount} paradas geolocalizadas listas para entrega 📍`
                   : 'Navegación visual interactiva en tiempo real'}
               </Text>
             </View>
@@ -255,10 +270,10 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         {/* =================================================================== */}
-        {/* GESTIÓN OPERATIVA: FILAS RECTANGULARES ERGONÓMICAS */}
+        {/* GESTIÓN OPERATIVA: FILAS RECTANGULARES ERGONÓMICAS CON EMOJIS */}
         {/* =================================================================== */}
         <View style={styles.sectionTitleWrapper}>
-          <Text style={styles.sectionHeaderTitle}>Gestión Operativa</Text>
+          <Text style={styles.sectionHeaderTitle}>🗂️ Gestión Operativa</Text>
           <Text style={styles.sectionHeaderSubtitle}>Módulos y Catálogos</Text>
         </View>
 
@@ -269,14 +284,14 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => navigation.navigate('CustomerListScreen')}
             activeOpacity={0.7}
           >
-            <View style={[styles.moduleIconBox, { backgroundColor: '#EFF6FF' }]}>
-              <Ionicons name="people" size={22} color={COLORS.primary} />
+            <View style={[styles.moduleIconBox, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
+              <Text style={styles.moduleEmoji}>👥</Text>
             </View>
 
             <View style={styles.moduleTextCol}>
               <Text style={styles.moduleTitle}>Mis Clientes</Text>
               <Text style={styles.moduleSubtitle}>
-                Directorio, teléfonos de contacto y puntos GPS fijados
+                Directorio, teléfonos de contacto y puntos GPS fijados 📍
               </Text>
             </View>
 
@@ -296,14 +311,14 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => navigation.navigate('ProductListScreen')}
             activeOpacity={0.7}
           >
-            <View style={[styles.moduleIconBox, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="cube" size={22} color="#D97706" />
+            <View style={[styles.moduleIconBox, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }]}>
+              <Text style={styles.moduleEmoji}>🏷️</Text>
             </View>
 
             <View style={styles.moduleTextCol}>
-              <Text style={styles.moduleTitle}>Mis Productos</Text>
+              <Text style={styles.moduleTitle}>Mis Productos y Servicios</Text>
               <Text style={styles.moduleSubtitle}>
-                Catálogo de productos, precios y unidades de venta
+                Catálogo de precios y unidades de venta para pedidos 🛒
               </Text>
             </View>
 
@@ -323,14 +338,14 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => navigation.navigate('OrderListScreen')}
             activeOpacity={0.7}
           >
-            <View style={[styles.moduleIconBox, { backgroundColor: '#ECFDF5' }]}>
-              <Ionicons name="list" size={22} color={COLORS.success} />
+            <View style={[styles.moduleIconBox, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
+              <Text style={styles.moduleEmoji}>📦</Text>
             </View>
 
             <View style={styles.moduleTextCol}>
               <Text style={styles.moduleTitle}>Lista de Pedidos</Text>
               <Text style={styles.moduleSubtitle}>
-                Control por estado, cobro en ruta y trazabilidad
+                Control por estado, cobro en ruta y trazabilidad ⏱️
               </Text>
             </View>
 
@@ -350,14 +365,14 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => navigation.navigate('RouteSummaryModalOrScreen')}
             activeOpacity={0.7}
           >
-            <View style={[styles.moduleIconBox, { backgroundColor: '#F3E8FF' }]}>
-              <Ionicons name="clipboard" size={22} color="#7C3AED" />
+            <View style={[styles.moduleIconBox, { backgroundColor: '#F3E8FF', borderColor: '#DDD6FE' }]}>
+              <Text style={styles.moduleEmoji}>🚚</Text>
             </View>
 
             <View style={styles.moduleTextCol}>
-              <Text style={styles.moduleTitle}>Hoja de Carga</Text>
+              <Text style={styles.moduleTitle}>Hoja de Carga del Vehículo</Text>
               <Text style={styles.moduleSubtitle}>
-                Resumen consolidado de mercadería para cargar el vehículo
+                Consolidado de mercadería para cargar la unidad 📋
               </Text>
             </View>
 
@@ -421,8 +436,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#BFDBFE',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  logoEmoji: {
+    fontSize: 26,
   },
   brandTextCol: {
     flex: 1,
@@ -484,6 +507,9 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 6,
   },
+  pillEmoji: {
+    fontSize: 15,
+  },
   metricPillNumber: {
     fontSize: 13,
     fontWeight: '800',
@@ -525,6 +551,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  headerIconEmoji: {
+    fontSize: 16,
+  },
   statsTitle: {
     fontSize: 14,
     fontWeight: '700',
@@ -561,11 +590,19 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.textPrimary,
   },
+  statSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 2,
+  },
+  statMiniEmoji: {
+    fontSize: 11,
+  },
   statLabelText: {
     fontSize: 11,
     color: COLORS.textSecondary,
     fontWeight: '600',
-    marginTop: 2,
   },
   statColDivider: {
     width: 1,
@@ -681,6 +718,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  heroEmoji: {
+    fontSize: 22,
+    fontWeight: '800',
+  },
   heroTextCol: {
     flex: 1,
   },
@@ -728,12 +769,14 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   mapIconCircle: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
   },
   mapActionTitle: {
     fontSize: 14,
@@ -785,11 +828,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   moduleIconBox: {
-    width: 44,
-    height: 44,
+    width: 46,
+    height: 46,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+  },
+  moduleEmoji: {
+    fontSize: 22,
   },
   moduleTextCol: {
     flex: 1,

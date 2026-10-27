@@ -453,8 +453,16 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
               {selectedCustomerObj ? (
                 <View style={styles.clientSummaryCard}>
                   <View style={styles.clientAvatar}>
-                    <Text style={styles.clientAvatarText}>
-                      {selectedCustomerObj.name.substring(0, 2).toUpperCase()}
+                    <Text style={{ fontSize: 20 }}>
+                      {selectedCustomerObj.name.toLowerCase().includes('restaurante')
+                        ? '🍽️'
+                        : selectedCustomerObj.name.toLowerCase().includes('panader')
+                        ? '🥖'
+                        : selectedCustomerObj.name.toLowerCase().includes('bodega')
+                        ? '🏪'
+                        : selectedCustomerObj.name.toLowerCase().includes('lavander')
+                        ? '🫧'
+                        : '👤'}
                     </Text>
                   </View>
 
@@ -943,8 +951,16 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                     }}
                   >
                     <View style={styles.pickAvatar}>
-                      <Text style={styles.pickAvatarText}>
-                        {c.name.substring(0, 2).toUpperCase()}
+                      <Text style={{ fontSize: 20 }}>
+                        {c.name.toLowerCase().includes('restaurante')
+                          ? '🍽️'
+                          : c.name.toLowerCase().includes('panader')
+                          ? '🥖'
+                          : c.name.toLowerCase().includes('bodega')
+                          ? '🏪'
+                          : c.name.toLowerCase().includes('lavander')
+                          ? '🫧'
+                          : '👤'}
                       </Text>
                     </View>
                     <View style={{ flex: 1 }}>
@@ -1031,8 +1047,18 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                   style={styles.productPickItem}
                   onPress={() => handleAddProductFromCatalog(p)}
                 >
-                  <View style={styles.productPickIconBox}>
-                    <Ionicons name="cube-outline" size={22} color={COLORS.primary} />
+                  <View style={[styles.productPickIconBox, { backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE' }]}>
+                    <Text style={{ fontSize: 20 }}>
+                      {p.name.toLowerCase().includes('agua')
+                        ? '💧'
+                        : p.name.toLowerCase().includes('gas')
+                        ? '🔥'
+                        : p.name.toLowerCase().includes('harina') || p.name.toLowerCase().includes('pan')
+                        ? '🥖'
+                        : p.name.toLowerCase().includes('lej') || p.name.toLowerCase().includes('deterg')
+                        ? '🧴'
+                        : '📦'}
+                    </Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.productPickName}>{p.name}</Text>

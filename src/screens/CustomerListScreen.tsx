@@ -107,8 +107,16 @@ export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
         {/* Cabecera de la tarjeta */}
         <View style={styles.cardHeader}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {item.name.substring(0, 2).toUpperCase()}
+            <Text style={{ fontSize: 22 }}>
+              {item.name.toLowerCase().includes('restaurante')
+                ? '🍽️'
+                : item.name.toLowerCase().includes('panader')
+                ? '🥖'
+                : item.name.toLowerCase().includes('bodega')
+                ? '🏪'
+                : item.name.toLowerCase().includes('lavander')
+                ? '🫧'
+                : '👤'}
             </Text>
           </View>
 
@@ -124,12 +132,12 @@ export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
 
               {hasGps ? (
                 <View style={styles.gpsBadgeSuccess}>
-                  <Ionicons name="navigate-circle" size={12} color={COLORS.success} />
+                  <Text style={{ fontSize: 10 }}>📍</Text>
                   <Text style={styles.gpsBadgeText}>GPS Listo</Text>
                 </View>
               ) : (
                 <View style={styles.gpsBadgeNone}>
-                  <Ionicons name="navigate-outline" size={12} color={COLORS.textMuted} />
+                  <Text style={{ fontSize: 10 }}>⚪</Text>
                   <Text style={styles.gpsBadgeNoneText}>Sin GPS</Text>
                 </View>
               )}
@@ -156,7 +164,7 @@ export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
         {/* Dirección y Referencia */}
         <View style={styles.addressSection}>
           <View style={styles.detailRow}>
-            <Ionicons name="home-outline" size={14} color={COLORS.textSecondary} />
+            <Text style={{ fontSize: 13 }}>🏠</Text>
             <Text style={styles.addressText} numberOfLines={2}>
               {item.deliveryAddress}
             </Text>
@@ -164,7 +172,7 @@ export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
 
           {item.addressReference ? (
             <View style={[styles.detailRow, { marginTop: 4 }]}>
-              <Ionicons name="information-circle-outline" size={14} color={COLORS.accent} />
+              <Text style={{ fontSize: 13 }}>ℹ️</Text>
               <Text style={styles.referenceText} numberOfLines={1}>
                 Ref: {item.addressReference}
               </Text>
@@ -173,7 +181,7 @@ export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
 
           {item.notes ? (
             <View style={[styles.detailRow, { marginTop: 4 }]}>
-              <Ionicons name="chatbox-ellipses-outline" size={14} color={COLORS.warning} />
+              <Text style={{ fontSize: 13 }}>📝</Text>
               <Text style={styles.notesText} numberOfLines={1}>
                 {item.notes}
               </Text>
@@ -188,7 +196,7 @@ export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
               style={styles.callButton}
               onPress={() => handleCall(item.phone, item.name)}
             >
-              <Ionicons name="call" size={14} color={COLORS.primary} />
+              <Text style={{ fontSize: 12 }}>📞</Text>
               <Text style={styles.callButtonText}>{item.phone}</Text>
             </TouchableOpacity>
 
@@ -196,7 +204,7 @@ export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
               style={styles.waButton}
               onPress={() => handleWhatsApp(item.phone, item.name)}
             >
-              <Ionicons name="logo-whatsapp" size={15} color="#16A34A" />
+              <Text style={{ fontSize: 14 }}>💬</Text>
             </TouchableOpacity>
           </View>
 
@@ -205,7 +213,7 @@ export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => handleCreateOrder(item)}
             activeOpacity={0.8}
           >
-            <Ionicons name="add-circle" size={16} color={COLORS.textInverse} />
+            <Text style={{ fontSize: 13 }}>📦</Text>
             <Text style={styles.newOrderButtonText}>Crear Pedido</Text>
           </TouchableOpacity>
         </View>
