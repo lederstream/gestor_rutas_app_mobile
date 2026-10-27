@@ -32,6 +32,7 @@ export interface OrderItem {
 export interface Order {
   id: string;
   orderCode: string; // e.g. "GR-1001"
+  customerId?: string; // Vínculo con la entidad Cliente
   customerName: string;
   customerPhone: string;
   deliveryAddress: string;

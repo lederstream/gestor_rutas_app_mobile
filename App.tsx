@@ -11,15 +11,21 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { registerRootComponent } from 'expo';
 import { StatusBar } from 'expo-status-bar';
 import { OrderProvider } from './src/context/OrderContext';
+import { CustomerProvider } from './src/context/CustomerContext';
+import { ProductProvider } from './src/context/ProductContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      <OrderProvider>
-        <StatusBar style="auto" />
-        <RootNavigator />
-      </OrderProvider>
+      <CustomerProvider>
+        <ProductProvider>
+          <OrderProvider>
+            <StatusBar style="auto" />
+            <RootNavigator />
+          </OrderProvider>
+        </ProductProvider>
+      </CustomerProvider>
     </SafeAreaProvider>
   );
 }

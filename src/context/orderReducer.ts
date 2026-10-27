@@ -22,6 +22,11 @@ export type OrderAction =
       type: 'UPDATE_ORDER_STATUS';
       payload: { id: string; status: OrderStatus; deliveredAt?: string };
     }
+  | {
+      type: 'UPDATE_ORDER_LOCATION';
+      payload: { id: string; latitude: number; longitude: number };
+    }
+  | { type: 'LOAD_DEMO_ORDERS'; payload: Order[] }
   | { type: 'DELETE_ORDER'; payload: { id: string } }
   | { type: 'CLEAR_ALL_ORDERS' }
   | { type: 'SET_FILTER'; payload: Partial<OrderFilter> }
@@ -87,6 +92,23 @@ export function orderReducer(state: OrderState, action: OrderAction): OrderState
             paymentStatus: isDelivered ? 'PAID' : ord.paymentStatus,
           };
         }),
+      };
+    }
+
+    case 'UPDATE_ORDER_LOCATION': {
+      const { id, latitude, longitude } = action.payload;
+      return {
+        ...state,
+        orders: state.orders.map((ord) =>
+          ord.id === id ? { ...ord, latitude, longitude } : ord
+        ),
+      };
+    }
+
+    case 'LOAD_DEMO_ORDERS': {
+      return {
+        ...state,
+        orders: [...state.orders, ...action.payload],
       };
     }
 

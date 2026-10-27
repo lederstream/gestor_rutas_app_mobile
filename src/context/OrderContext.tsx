@@ -44,6 +44,8 @@ export interface OrderContextType {
   addOrder: (order: Order) => void;
   updateOrder: (order: Order) => void;
   updateOrderStatus: (id: string, status: OrderStatus, deliveredAt?: string) => void;
+  updateOrderLocation: (id: string, latitude: number, longitude: number) => void;
+  loadDemoOrders: (demoOrders: Order[]) => void;
   deleteOrder: (id: string) => void;
   clearAllOrders: () => void;
   setFilter: (filter: Partial<OrderFilter>) => void;
@@ -183,6 +185,20 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
     []
   );
 
+  const updateOrderLocation = useCallback(
+    (id: string, latitude: number, longitude: number) => {
+      dispatch({
+        type: 'UPDATE_ORDER_LOCATION',
+        payload: { id, latitude, longitude },
+      });
+    },
+    []
+  );
+
+  const loadDemoOrders = useCallback((demoOrders: Order[]) => {
+    dispatch({ type: 'LOAD_DEMO_ORDERS', payload: demoOrders });
+  }, []);
+
   const deleteOrder = useCallback((id: string) => {
     dispatch({ type: 'DELETE_ORDER', payload: { id } });
   }, []);
@@ -219,6 +235,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
       addOrder,
       updateOrder,
       updateOrderStatus,
+      updateOrderLocation,
+      loadDemoOrders,
       deleteOrder,
       clearAllOrders,
       setFilter,
@@ -234,6 +252,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
       addOrder,
       updateOrder,
       updateOrderStatus,
+      updateOrderLocation,
+      loadDemoOrders,
       deleteOrder,
       clearAllOrders,
       setFilter,

@@ -18,14 +18,30 @@ import { CreateOrderScreen } from '../screens/CreateOrderScreen';
 import { OrderDetailScreen } from '../screens/OrderDetailScreen';
 import { RouteSummaryModalOrScreen } from '../screens/RouteSummaryModalOrScreen';
 import { MapRouteScreen } from '../screens/MapRouteScreen';
+import { CustomerListScreen } from '../screens/CustomerListScreen';
+import { CustomerFormScreen } from '../screens/CustomerFormScreen';
+import { ProductListScreen } from '../screens/ProductListScreen';
+import { ProductFormScreen } from '../screens/ProductFormScreen';
 
 export type RootStackParamList = {
   WelcomeScreen: undefined;
   OrderListScreen: undefined;
-  CreateOrderScreen: undefined;
+  CreateOrderScreen:
+    | {
+        initialCustomerId?: string;
+        initialLatitude?: number;
+        initialLongitude?: number;
+      }
+    | undefined;
   OrderDetailScreen: { orderId: string };
   RouteSummaryModalOrScreen: undefined;
-  MapRouteScreen: undefined;
+  MapRouteScreen:
+    | { highlightOrderId?: string; placePinForOrderId?: string }
+    | undefined;
+  CustomerListScreen: undefined;
+  CustomerFormScreen: { customerId?: string } | undefined;
+  ProductListScreen: undefined;
+  ProductFormScreen: { productId?: string } | undefined;
 };
 
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -48,6 +64,22 @@ export const RootNavigator: React.FC = () => {
           options={{
             animation: 'fade',
           }}
+        />
+        <Stack.Screen
+          name="CustomerListScreen"
+          component={CustomerListScreen}
+        />
+        <Stack.Screen
+          name="CustomerFormScreen"
+          component={CustomerFormScreen}
+        />
+        <Stack.Screen
+          name="ProductListScreen"
+          component={ProductListScreen}
+        />
+        <Stack.Screen
+          name="ProductFormScreen"
+          component={ProductFormScreen}
         />
         <Stack.Screen
           name="OrderListScreen"
