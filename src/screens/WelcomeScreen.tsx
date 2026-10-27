@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * SCREEN: WelcomeScreen.tsx
- * Dashboard Principal: Gestión Integral de Rutas, Clientes, Productos y Pedidos
+ * Dashboard Principal: Diseño Claro Premium con Tarjetas Rectangulares Ergonómicas
  * ============================================================================
  */
 
@@ -35,7 +35,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   const handleClearAll = () => {
     Alert.alert(
       'Limpiar Lista de Pedidos',
-      '¿Deseas vaciar la lista de pedidos en ruta? Los clientes y productos se mantendrán a salvo.',
+      '¿Deseas vaciar los pedidos de la jornada actual? Tus clientes y catálogo de productos se mantendrán intactos.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -47,227 +47,344 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
     );
   };
 
+  const activeDeliveriesCount = statistics.pendingOrders + statistics.inTransitOrders;
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.secondary} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Encabezado Principal */}
-        <View style={styles.heroBanner}>
+        {/* =================================================================== */}
+        {/* CABECERA PRINCIPAL TEMA CLARO PREMIUM */}
+        {/* =================================================================== */}
+        <View style={styles.topHeader}>
           <View style={styles.brandRow}>
             <View style={styles.logoBadge}>
-              <Ionicons name="navigate" size={28} color={COLORS.primary} />
+              <Ionicons name="navigate" size={26} color={COLORS.primary} />
             </View>
+
             <View style={styles.brandTextCol}>
-              <Text style={styles.heroTitle}>Gestor de Rutas</Text>
-              <Text style={styles.heroSubtitle}>Sistema de Logística y Despachos</Text>
+              <View style={styles.appTitleRow}>
+                <Text style={styles.appName}>Gestor de Rutas</Text>
+                <View style={styles.onlineBadge}>
+                  <View style={styles.onlineDot} />
+                  <Text style={styles.onlineText}>En Línea</Text>
+                </View>
+              </View>
+              <Text style={styles.appSubtitle}>
+                Sistema de Logística y Despachos
+              </Text>
             </View>
           </View>
 
-          {/* Mini-Badges de Inventario & Contactos */}
-          <View style={styles.topStatsRow}>
-            <View style={styles.topStatItem}>
-              <Ionicons name="people-outline" size={14} color={COLORS.accent} />
-              <Text style={styles.topStatText}>{customers.length} Clientes</Text>
-            </View>
-            <View style={styles.topStatDivider} />
-            <View style={styles.topStatItem}>
-              <Ionicons name="cube-outline" size={14} color={COLORS.accent} />
-              <Text style={styles.topStatText}>{products.length} Productos</Text>
-            </View>
-            <View style={styles.topStatDivider} />
-            <View style={styles.topStatItem}>
-              <Ionicons name="bicycle-outline" size={14} color={COLORS.accent} />
-              <Text style={styles.topStatText}>{orders.length} En Cola</Text>
-            </View>
+          {/* Barra de Resumen Superior (Clientes, Productos, Pedidos) */}
+          <View style={styles.metricsPillsRow}>
+            <TouchableOpacity
+              style={styles.metricPill}
+              onPress={() => navigation.navigate('CustomerListScreen')}
+            >
+              <Ionicons name="people-outline" size={15} color={COLORS.primary} />
+              <Text style={styles.metricPillNumber}>{customers.length}</Text>
+              <Text style={styles.metricPillLabel}>Clientes</Text>
+            </TouchableOpacity>
+
+            <View style={styles.metricPillDivider} />
+
+            <TouchableOpacity
+              style={styles.metricPill}
+              onPress={() => navigation.navigate('ProductListScreen')}
+            >
+              <Ionicons name="cube-outline" size={15} color="#D97706" />
+              <Text style={styles.metricPillNumber}>{products.length}</Text>
+              <Text style={styles.metricPillLabel}>Productos</Text>
+            </TouchableOpacity>
+
+            <View style={styles.metricPillDivider} />
+
+            <TouchableOpacity
+              style={styles.metricPill}
+              onPress={() => navigation.navigate('OrderListScreen')}
+            >
+              <Ionicons name="bicycle-outline" size={15} color={COLORS.success} />
+              <Text style={styles.metricPillNumber}>{orders.length}</Text>
+              <Text style={styles.metricPillLabel}>En Cola</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Acciones Rápidas Destacadas */}
-        <View style={styles.quickActionsContainer}>
-          <TouchableOpacity
-            style={styles.primaryActionBtn}
-            onPress={() => navigation.navigate('CreateOrderScreen')}
-            activeOpacity={0.85}
-          >
-            <View style={styles.primaryActionIconBox}>
-              <Ionicons name="add" size={26} color={COLORS.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.primaryActionTitle}>Generar Nuevo Pedido</Text>
-              <Text style={styles.primaryActionSubtitle}>
-                Elige un cliente para autocompletar su dirección y productos
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textInverse} />
-          </TouchableOpacity>
+        {/* =================================================================== */}
+        {/* MÉTRICAS DE OPERACIÓN DEL DÍA (Tarjetas Blancas con Sombra Suave) */}
+        {/* =================================================================== */}
+        {orders.length > 0 ? (
+          <View style={styles.statsCard}>
+            <View style={styles.statsHeader}>
+              <View style={styles.statsTitleRow}>
+                <Ionicons name="analytics" size={18} color={COLORS.primary} />
+                <Text style={styles.statsTitle}>Operación de Hoy</Text>
+              </View>
 
-          <TouchableOpacity
-            style={styles.secondaryActionBtn}
-            onPress={() => navigation.navigate('MapRouteScreen')}
-            activeOpacity={0.85}
-          >
-            <View style={styles.secondaryActionIconBox}>
-              <Ionicons name="map-outline" size={22} color={COLORS.textInverse} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.secondaryActionTitle}>Mapa de Rutas (GPS)</Text>
-              <Text style={styles.secondaryActionSubtitle}>
-                {statistics.pendingOrders + statistics.inTransitOrders > 0
-                  ? `${statistics.pendingOrders + statistics.inTransitOrders} entregas activas geolocalizadas`
-                  : 'Navegación visual interactiva en tiempo real'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Grid de Secciones de Gestión Operativa */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Gestión Operativa</Text>
-        </View>
-
-        <View style={styles.gridContainer}>
-          {/* Tarjeta: Mis Clientes */}
-          <TouchableOpacity
-            style={styles.gridCard}
-            onPress={() => navigation.navigate('CustomerListScreen')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.gridCardTop}>
-              <View style={[styles.gridIconCircle, { backgroundColor: '#EFF6FF' }]}>
-                <Ionicons name="people" size={22} color={COLORS.primary} />
-              </View>
-              <View style={styles.gridCountBadge}>
-                <Text style={styles.gridCountText}>{customers.length}</Text>
-              </View>
-            </View>
-            <Text style={styles.gridCardTitle}>Mis Clientes</Text>
-            <Text style={styles.gridCardDesc}>Directorio, teléfonos y puntos GPS fijados</Text>
-          </TouchableOpacity>
-
-          {/* Tarjeta: Mis Productos */}
-          <TouchableOpacity
-            style={styles.gridCard}
-            onPress={() => navigation.navigate('ProductListScreen')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.gridCardTop}>
-              <View style={[styles.gridIconCircle, { backgroundColor: '#FEF3C7' }]}>
-                <Ionicons name="cube" size={22} color="#D97706" />
-              </View>
-              <View style={[styles.gridCountBadge, { backgroundColor: '#FEF3C7' }]}>
-                <Text style={[styles.gridCountText, { color: '#B45309' }]}>
-                  {products.length}
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.gridCardTitle}>Mis Productos</Text>
-            <Text style={styles.gridCardDesc}>Catálogo de precios y unidades para venta</Text>
-          </TouchableOpacity>
-
-          {/* Tarjeta: Lista de Pedidos */}
-          <TouchableOpacity
-            style={styles.gridCard}
-            onPress={() => navigation.navigate('OrderListScreen')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.gridCardTop}>
-              <View style={[styles.gridIconCircle, { backgroundColor: '#ECFDF5' }]}>
-                <Ionicons name="list" size={22} color={COLORS.success} />
-              </View>
-              <View style={[styles.gridCountBadge, { backgroundColor: '#ECFDF5' }]}>
-                <Text style={[styles.gridCountText, { color: '#065F46' }]}>
-                  {orders.length}
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.gridCardTitle}>Lista de Pedidos</Text>
-            <Text style={styles.gridCardDesc}>Filtros por estado, prioridad y cobro en ruta</Text>
-          </TouchableOpacity>
-
-          {/* Tarjeta: Hoja de Carga */}
-          <TouchableOpacity
-            style={styles.gridCard}
-            onPress={() => navigation.navigate('RouteSummaryModalOrScreen')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.gridCardTop}>
-              <View style={[styles.gridIconCircle, { backgroundColor: '#F1F5F9' }]}>
-                <Ionicons name="clipboard-outline" size={22} color={COLORS.secondary} />
-              </View>
-              <View style={styles.gridCountBadge}>
-                <Ionicons name="car-outline" size={13} color={COLORS.textSecondary} />
-              </View>
-            </View>
-            <Text style={styles.gridCardTitle}>Hoja de Carga</Text>
-            <Text style={styles.gridCardDesc}>Totales consolidados para cargar el vehículo</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Métricas del Día (si hay pedidos) */}
-        {orders.length > 0 && (
-          <View style={styles.metricsCard}>
-            <View style={styles.metricsHeader}>
-              <View style={styles.metricsTitleRow}>
-                <Ionicons name="pulse" size={18} color={COLORS.primary} />
-                <Text style={styles.metricsTitle}>Operación del Día</Text>
-              </View>
-              <View style={styles.liveIndicator}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveText}>En Marcha</Text>
-              </View>
-            </View>
-
-            <View style={styles.statsGrid}>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{statistics.totalOrders}</Text>
-                <Text style={styles.statLabel}>Total Pedidos</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statBox}>
-                <Text style={[styles.statValue, { color: COLORS.statusInTransit }]}>
-                  {statistics.inTransitOrders}
-                </Text>
-                <Text style={styles.statLabel}>En Ruta</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statBox}>
-                <Text style={[styles.statValue, { color: COLORS.statusDelivered }]}>
-                  {statistics.deliveredOrders}
-                </Text>
-                <Text style={styles.statLabel}>Entregados</Text>
-              </View>
-            </View>
-
-            <View style={styles.revenueRow}>
-              <View>
-                <Text style={styles.revenueCaption}>Cobranza Total Prevista</Text>
-                <Text style={styles.revenueValue}>
-                  {formatCurrency(statistics.pendingCollection + statistics.totalRevenue)}
-                </Text>
-              </View>
-              <View style={styles.ratePill}>
-                <Ionicons name="speedometer-outline" size={14} color={COLORS.success} />
-                <Text style={styles.rateText}>
+              <View style={styles.effectivityPill}>
+                <Ionicons name="speedometer-outline" size={13} color={COLORS.success} />
+                <Text style={styles.effectivityText}>
                   {statistics.completedDeliveriesRate}% Efectividad
                 </Text>
               </View>
             </View>
+
+            <View style={styles.statsValuesGrid}>
+              <View style={styles.statCol}>
+                <Text style={styles.statLargeNumber}>{statistics.totalOrders}</Text>
+                <Text style={styles.statLabelText}>Total Pedidos</Text>
+              </View>
+
+              <View style={styles.statColDivider} />
+
+              <View style={styles.statCol}>
+                <Text style={[styles.statLargeNumber, { color: COLORS.statusInTransit }]}>
+                  {statistics.inTransitOrders}
+                </Text>
+                <Text style={styles.statLabelText}>En Ruta</Text>
+              </View>
+
+              <View style={styles.statColDivider} />
+
+              <View style={styles.statCol}>
+                <Text style={[styles.statLargeNumber, { color: COLORS.statusDelivered }]}>
+                  {statistics.deliveredOrders}
+                </Text>
+                <Text style={styles.statLabelText}>Entregados</Text>
+              </View>
+            </View>
+
+            {/* Fila de Recaudación Prevista */}
+            <View style={styles.revenueRow}>
+              <View>
+                <Text style={styles.revenueCaption}>Cobranza Total Prevista</Text>
+                <Text style={styles.revenueAmount}>
+                  {formatCurrency(statistics.pendingCollection + statistics.totalRevenue)}
+                </Text>
+              </View>
+
+              <View style={styles.pendingCollectionBox}>
+                <Text style={styles.pendingCollectionLabel}>Pendiente en Ruta:</Text>
+                <Text style={styles.pendingCollectionValue}>
+                  {formatCurrency(statistics.pendingCollection)}
+                </Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          /* Estado inicial limpio si no hay pedidos */
+          <View style={styles.emptyWelcomeCard}>
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="sparkles" size={26} color={COLORS.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.emptyCardTitle}>Listo para Despachar</Text>
+              <Text style={styles.emptyCardDesc}>
+                Genera tu primer pedido seleccionando un cliente para planificar la ruta en el mapa.
+              </Text>
+            </View>
           </View>
         )}
 
-        {/* Botón de vaciar pedidos */}
+        {/* =================================================================== */}
+        {/* ACCIONES PRINCIPALES DESTACADAS */}
+        {/* =================================================================== */}
+        <View style={styles.sectionTitleWrapper}>
+          <Text style={styles.sectionHeaderTitle}>Acciones Rápidas</Text>
+        </View>
+
+        <View style={styles.actionsContainer}>
+          {/* Botón Hero: Generar Nuevo Pedido */}
+          <TouchableOpacity
+            style={styles.heroButton}
+            onPress={() => navigation.navigate('CreateOrderScreen')}
+            activeOpacity={0.88}
+          >
+            <View style={styles.heroIconCircle}>
+              <Ionicons name="add" size={24} color={COLORS.primary} />
+            </View>
+
+            <View style={styles.heroTextCol}>
+              <View style={styles.heroBadgeRow}>
+                <Text style={styles.heroTitle}>Generar Nuevo Pedido</Text>
+                <View style={styles.heroTag}>
+                  <Text style={styles.heroTagText}>Principal</Text>
+                </View>
+              </View>
+              <Text style={styles.heroSubtitle}>
+                Elige un cliente para autocompletar su dirección, GPS y productos
+              </Text>
+            </View>
+
+            <Ionicons name="chevron-forward" size={20} color={COLORS.textInverse} />
+          </TouchableOpacity>
+
+          {/* Botón Secundario: Mapa de Rutas GPS */}
+          <TouchableOpacity
+            style={styles.mapActionButton}
+            onPress={() => navigation.navigate('MapRouteScreen')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.mapIconCircle}>
+              <Ionicons name="map" size={22} color={COLORS.primary} />
+            </View>
+
+            <View style={{ flex: 1 }}>
+              <Text style={styles.mapActionTitle}>Mapa de Rutas (GPS)</Text>
+              <Text style={styles.mapActionSubtitle}>
+                {activeDeliveriesCount > 0
+                  ? `${activeDeliveriesCount} paradas pendientes geolocalizadas`
+                  : 'Navegación visual interactiva en tiempo real'}
+              </Text>
+            </View>
+
+            <View style={styles.mapActionEnd}>
+              {activeDeliveriesCount > 0 && (
+                <View style={styles.activeRoutePill}>
+                  <Text style={styles.activeRouteText}>{activeDeliveriesCount}</Text>
+                </View>
+              )}
+              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* =================================================================== */}
+        {/* GESTIÓN OPERATIVA: FILAS RECTANGULARES ERGONÓMICAS */}
+        {/* =================================================================== */}
+        <View style={styles.sectionTitleWrapper}>
+          <Text style={styles.sectionHeaderTitle}>Gestión Operativa</Text>
+          <Text style={styles.sectionHeaderSubtitle}>Módulos y Catálogos</Text>
+        </View>
+
+        <View style={styles.modulesContainer}>
+          {/* Fila 1: Mis Clientes */}
+          <TouchableOpacity
+            style={styles.moduleRowCard}
+            onPress={() => navigation.navigate('CustomerListScreen')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.moduleIconBox, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="people" size={22} color={COLORS.primary} />
+            </View>
+
+            <View style={styles.moduleTextCol}>
+              <Text style={styles.moduleTitle}>Mis Clientes</Text>
+              <Text style={styles.moduleSubtitle}>
+                Directorio, teléfonos de contacto y puntos GPS fijados
+              </Text>
+            </View>
+
+            <View style={styles.moduleEndCol}>
+              <View style={[styles.moduleCountBadge, { backgroundColor: '#EFF6FF' }]}>
+                <Text style={[styles.moduleCountText, { color: COLORS.primary }]}>
+                  {customers.length}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+            </View>
+          </TouchableOpacity>
+
+          {/* Fila 2: Mis Productos */}
+          <TouchableOpacity
+            style={styles.moduleRowCard}
+            onPress={() => navigation.navigate('ProductListScreen')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.moduleIconBox, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="cube" size={22} color="#D97706" />
+            </View>
+
+            <View style={styles.moduleTextCol}>
+              <Text style={styles.moduleTitle}>Mis Productos</Text>
+              <Text style={styles.moduleSubtitle}>
+                Catálogo de productos, precios y unidades de venta
+              </Text>
+            </View>
+
+            <View style={styles.moduleEndCol}>
+              <View style={[styles.moduleCountBadge, { backgroundColor: '#FEF3C7' }]}>
+                <Text style={[styles.moduleCountText, { color: '#B45309' }]}>
+                  {products.length}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+            </View>
+          </TouchableOpacity>
+
+          {/* Fila 3: Lista de Pedidos */}
+          <TouchableOpacity
+            style={styles.moduleRowCard}
+            onPress={() => navigation.navigate('OrderListScreen')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.moduleIconBox, { backgroundColor: '#ECFDF5' }]}>
+              <Ionicons name="list" size={22} color={COLORS.success} />
+            </View>
+
+            <View style={styles.moduleTextCol}>
+              <Text style={styles.moduleTitle}>Lista de Pedidos</Text>
+              <Text style={styles.moduleSubtitle}>
+                Control por estado, cobro en ruta y trazabilidad
+              </Text>
+            </View>
+
+            <View style={styles.moduleEndCol}>
+              <View style={[styles.moduleCountBadge, { backgroundColor: '#ECFDF5' }]}>
+                <Text style={[styles.moduleCountText, { color: '#065F46' }]}>
+                  {orders.length}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+            </View>
+          </TouchableOpacity>
+
+          {/* Fila 4: Hoja de Carga */}
+          <TouchableOpacity
+            style={styles.moduleRowCard}
+            onPress={() => navigation.navigate('RouteSummaryModalOrScreen')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.moduleIconBox, { backgroundColor: '#F3E8FF' }]}>
+              <Ionicons name="clipboard" size={22} color="#7C3AED" />
+            </View>
+
+            <View style={styles.moduleTextCol}>
+              <Text style={styles.moduleTitle}>Hoja de Carga</Text>
+              <Text style={styles.moduleSubtitle}>
+                Resumen consolidado de mercadería para cargar el vehículo
+              </Text>
+            </View>
+
+            <View style={styles.moduleEndCol}>
+              <View style={[styles.moduleCountBadge, { backgroundColor: '#F3E8FF' }]}>
+                <Text style={[styles.moduleCountText, { color: '#7C3AED' }]}>
+                  Carga
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* =================================================================== */}
+        {/* BOTÓN INFERIOR: VACIAR PEDIDOS DE LA JORNADA */}
+        {/* =================================================================== */}
         {orders.length > 0 && (
           <TouchableOpacity
-            style={styles.clearButton}
+            style={styles.clearOrdersButton}
             onPress={handleClearAll}
             activeOpacity={0.7}
           >
-            <Ionicons name="trash-outline" size={14} color={COLORS.danger} />
-            <Text style={styles.clearButtonText}>Vaciar pedidos de la jornada</Text>
+            <Ionicons name="trash-outline" size={15} color={COLORS.danger} />
+            <Text style={styles.clearOrdersText}>
+              Vaciar pedidos de la jornada actual
+            </Text>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -278,328 +395,442 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.background,
   },
   scrollContent: {
-    paddingBottom: 36,
+    paddingBottom: 40,
   },
-  heroBanner: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
-    backgroundColor: COLORS.secondary,
+  /* Cabecera Superior */
+  topHeader: {
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
   },
   logoBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: '#0F172A',
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(56, 189, 248, 0.4)',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
   },
   brandTextCol: {
     flex: 1,
   },
-  heroTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: COLORS.textInverse,
-  },
-  heroSubtitle: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginTop: 2,
-  },
-  topStatsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginTop: 16,
-    justifyContent: 'space-around',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  topStatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  topStatText: {
-    fontSize: 12,
-    color: COLORS.accent,
-    fontWeight: '700',
-  },
-  topStatDivider: {
-    width: 1,
-    height: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  quickActionsContainer: {
-    paddingHorizontal: 16,
-    marginTop: 12,
-    gap: 10,
-  },
-  primaryActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    borderRadius: 16,
-    padding: 16,
-    gap: 14,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  primaryActionIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: COLORS.textInverse,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryActionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.textInverse,
-  },
-  primaryActionSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.85)',
-    marginTop: 2,
-    lineHeight: 16,
-  },
-  secondaryActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 14,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  secondaryActionIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#0F172A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryActionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.textInverse,
-  },
-  secondaryActionSubtitle: {
-    fontSize: 11,
-    color: '#94A3B8',
-    marginTop: 1,
-  },
-  sectionHeaderRow: {
-    paddingHorizontal: 18,
-    marginTop: 22,
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#94A3B8',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    gap: 10,
-  },
-  gridCard: {
-    width: '48%',
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 14,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  gridCardTop: {
+  appTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
   },
-  gridIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gridCountBadge: {
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  gridCountText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: COLORS.primary,
-  },
-  gridCardTitle: {
-    fontSize: 14,
+  appName: {
+    fontSize: 20,
     fontWeight: '800',
     color: COLORS.secondary,
-    marginBottom: 4,
+    letterSpacing: -0.3,
   },
-  gridCardDesc: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    lineHeight: 15,
-  },
-  metricsCard: {
-    backgroundColor: COLORS.surface,
-    marginHorizontal: 16,
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    marginTop: 20,
-  },
-  metricsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  metricsTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  metricsTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.secondary,
-  },
-  liveIndicator: {
+  onlineBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ECFDF5',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 12,
-    gap: 5,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
   },
-  liveDot: {
+  onlineDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: COLORS.success,
   },
-  liveText: {
+  onlineText: {
     fontSize: 10,
     fontWeight: '700',
     color: '#065F46',
   },
-  statsGrid: {
+  appSubtitle: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  metricsPillsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    marginTop: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    justifyContent: 'space-around',
   },
-  statBox: {
-    flex: 1,
+  metricPill: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 6,
   },
-  statValue: {
-    fontSize: 20,
+  metricPillNumber: {
+    fontSize: 13,
     fontWeight: '800',
     color: COLORS.textPrimary,
   },
-  statLabel: {
+  metricPillLabel: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  metricPillDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: '#CBD5E1',
+  },
+  /* Tarjeta de Métricas Operativas */
+  statsCard: {
+    backgroundColor: COLORS.surface,
+    marginHorizontal: 16,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginTop: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+  },
+  statsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  statsTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.secondary,
+  },
+  effectivityPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 4,
+  },
+  effectivityText: {
     fontSize: 11,
-    color: COLORS.textMuted,
+    fontWeight: '700',
+    color: '#065F46',
+  },
+  statsValuesGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  statCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statLargeNumber: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  statLabelText: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
     fontWeight: '600',
     marginTop: 2,
   },
-  statDivider: {
+  statColDivider: {
     width: 1,
-    height: 28,
+    height: 30,
     backgroundColor: '#F1F5F9',
   },
   revenueRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginTop: 12,
   },
   revenueCaption: {
     fontSize: 11,
-    color: COLORS.textMuted,
+    color: COLORS.textSecondary,
     fontWeight: '600',
   },
-  revenueValue: {
+  revenueAmount: {
     fontSize: 16,
     fontWeight: '800',
     color: COLORS.textPrimary,
     marginTop: 2,
   },
-  ratePill: {
+  pendingCollectionBox: {
+    alignItems: 'flex-end',
+  },
+  pendingCollectionLabel: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  pendingCollectionValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginTop: 1,
+  },
+  emptyWelcomeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    backgroundColor: '#F0F7FF',
+    gap: 12,
   },
-  rateText: {
-    fontSize: 11,
+  emptyIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#DBEAFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyCardTitle: {
+    fontSize: 14,
     fontWeight: '700',
-    color: '#065F46',
+    color: COLORS.primary,
   },
-  clearButton: {
+  emptyCardDesc: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  /* Títulos de Sección */
+  sectionTitleWrapper: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    marginTop: 22,
+    marginBottom: 10,
+  },
+  sectionHeaderTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  sectionHeaderSubtitle: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  /* Acciones Rápidas */
+  actionsContainer: {
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  heroButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    borderRadius: 16,
+    padding: 16,
+    gap: 14,
+    elevation: 4,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  heroIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroTextCol: {
+    flex: 1,
+  },
+  heroBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  heroTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.textInverse,
+  },
+  heroTag: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  heroTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.textInverse,
+    textTransform: 'uppercase',
+  },
+  heroSubtitle: {
+    fontSize: 11,
+    color: '#DBEAFE',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  mapActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 14,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+  },
+  mapIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapActionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  mapActionSubtitle: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 1,
+  },
+  mapActionEnd: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  activeRoutePill: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  activeRouteText: {
+    color: COLORS.textInverse,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  /* Filas Rectangulares de Gestión Operativa */
+  modulesContainer: {
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  moduleRowCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    gap: 12,
+  },
+  moduleIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moduleTextCol: {
+    flex: 1,
+  },
+  moduleTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  moduleSubtitle: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  moduleEndCol: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  moduleCountBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  moduleCountText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  /* Botón de Vaciar */
+  clearOrdersButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     gap: 6,
     marginTop: 16,
   },
-  clearButtonText: {
+  clearOrdersText: {
     fontSize: 12,
-    color: COLORS.danger,
     fontWeight: '700',
+    color: COLORS.danger,
   },
 });

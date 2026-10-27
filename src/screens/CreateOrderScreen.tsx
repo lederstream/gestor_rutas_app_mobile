@@ -374,7 +374,7 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.secondary} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
       <Header
         title="Generar Nuevo Pedido"

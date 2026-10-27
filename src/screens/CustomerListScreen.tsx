@@ -224,7 +224,7 @@ export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.secondary} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
       
       <Header
         title="Mis Clientes"
