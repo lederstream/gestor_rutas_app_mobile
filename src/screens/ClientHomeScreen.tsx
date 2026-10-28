@@ -34,15 +34,16 @@ export const ClientHomeScreen: React.FC = () => {
   const { orders, addOrder } = useOrders();
   const { products } = useProducts();
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Cerrar Sesión',
-      '¿Deseas salir del portal de cliente?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Sí, Salir', style: 'destructive', onPress: logout },
-      ]
-    );
+  const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
+
+  const handleOpenLogout = () => {
+    hapticImpact('light');
+    setIsLogoutModalVisible(true);
+  };
+
+  const handleConfirmLogout = async () => {
+    setIsLogoutModalVisible(false);
+    await logout();
   };
 
   // Modal para confirmar pedido rápido
@@ -151,11 +152,13 @@ export const ClientHomeScreen: React.FC = () => {
 
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={styles.logoutBtn}
-            onPress={handleLogout}
-            activeOpacity={0.7}
+            style={styles.headerLogoutBtn}
+            onPress={handleOpenLogout}
+            activeOpacity={0.75}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="log-out-outline" size={18} color={COLORS.danger} />
+            <Ionicons name="log-out-outline" size={16} color={COLORS.danger} />
+            <Text style={styles.headerLogoutText}>Salir</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -323,7 +326,77 @@ export const ClientHomeScreen: React.FC = () => {
             </View>
           </View>
         )}
+
+        {/* =================================================================== */}
+        {/* TARJETA DE PERFIL Y CIERRE DE SESIÓN AL PIE */}
+        {/* =================================================================== */}
+        <View style={styles.userSessionCard}>
+          <View style={styles.userSessionRow}>
+            <View style={styles.userAvatarBox}>
+              <Text style={{ fontSize: 24 }}>🏪</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.userSessionName}>{user?.name || 'Cliente'}</Text>
+                <View style={styles.rolePillClient}>
+                  <Text style={styles.rolePillClientText}>Cliente</Text>
+                </View>
+              </View>
+              <Text style={styles.userSessionContact}>
+                {user?.deliveryAddress || 'Dirección registrada'} • Tel: {user?.phone || 'N/A'}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.sessionLogoutButton}
+            onPress={handleOpenLogout}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="log-out-outline" size={18} color={COLORS.danger} />
+            <Text style={styles.sessionLogoutButtonText}>Cerrar Sesión del Portal</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
+
+      {/* Modal Seguro de Confirmación de Cierre de Sesión */}
+      <Modal
+        visible={isLogoutModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsLogoutModalVisible(false)}
+      >
+        <View style={styles.logoutModalBackdrop}>
+          <View style={styles.logoutModalCard}>
+            <View style={styles.logoutModalIconBox}>
+              <Ionicons name="log-out-outline" size={32} color={COLORS.danger} />
+            </View>
+            <Text style={styles.logoutModalTitle}>¿Cerrar Sesión?</Text>
+            <Text style={styles.logoutModalDesc}>
+              Saldrás del portal de pedidos de {user?.name || 'cliente'}. Para volver a acceder deberás ingresar tus credenciales.
+            </Text>
+
+            <View style={styles.logoutModalButtonsCol}>
+              <TouchableOpacity
+                style={styles.confirmLogoutBtn}
+                onPress={handleConfirmLogout}
+                activeOpacity={0.88}
+              >
+                <Ionicons name="log-out" size={18} color="#FFFFFF" />
+                <Text style={styles.confirmLogoutBtnText}>Sí, Cerrar Sesión</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.cancelLogoutBtn}
+                onPress={() => setIsLogoutModalVisible(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cancelLogoutBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal para Confirmar Pedido de 1 Toque */}
       {selectedProductToOrder && (
@@ -476,33 +549,165 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
-  switchRoleBtn: {
+  headerLogoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: RADIUS.md,
     gap: 4,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: '#FECACA',
+    minHeight: 38,
   },
-  switchRoleText: {
-    fontSize: 11,
+  headerLogoutText: {
+    fontSize: 12,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: COLORS.danger,
   },
-  logoutBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#FEF2F2',
+  /* Tarjeta de Sesión al Pie */
+  userSessionCard: {
+    backgroundColor: COLORS.surface,
+    marginTop: SPACING.xl,
+    marginBottom: SPACING.lg,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  userSessionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: SPACING.md,
+  },
+  userAvatarBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#ECFDF5',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  userSessionName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  userSessionContact: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  rolePillClient: {
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  rolePillClientText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#065F46',
+  },
+  sessionLogoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: RADIUS.md,
+    height: TOUCH_TARGET.buttonHeight,
+    borderWidth: 1,
     borderColor: '#FECACA',
+    gap: 8,
+  },
+  sessionLogoutButtonText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.danger,
+  },
+  /* Modal de Cierre de Sesión */
+  logoutModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.xl,
+  },
+  logoutModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.xl,
+    alignItems: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+  },
+  logoutModalIconBox: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  logoutModalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    marginBottom: 6,
+  },
+  logoutModalDesc: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 20,
+  },
+  logoutModalButtonsCol: {
+    width: '100%',
+    gap: 10,
+  },
+  confirmLogoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.danger,
+    borderRadius: RADIUS.md,
+    height: TOUCH_TARGET.buttonHeight,
+    gap: 8,
+  },
+  confirmLogoutBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  cancelLogoutBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 44,
+    borderRadius: RADIUS.md,
+  },
+  cancelLogoutBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
   },
   scrollContent: {
     padding: SPACING.lg,
