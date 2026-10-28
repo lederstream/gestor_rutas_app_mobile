@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * SCREEN: LoginScreen.tsx
- * Pantalla de Inicio de Sesión y Selección de Rol (Distribuidor vs Cliente)
+ * Pantalla de Inicio de Sesión Corporativo Seguro con Control de Roles (RBAC)
  * ============================================================================
  */
 
@@ -17,41 +17,57 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
-import { UserRole, DEMO_PROFILES } from '../models/User';
 import { COLORS, SPACING, RADIUS, TOUCH_TARGET } from '../utils/constants';
 import { hapticImpact, hapticSelection } from '../utils/haptics';
 
 export const LoginScreen: React.FC = () => {
-  const { loginWithDemoProfile, login } = useAuth();
+  const { login } = useAuth();
 
-  const [selectedRole, setSelectedRole] = useState<UserRole>('DISTRIBUTOR');
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [district, setDistrict] = useState('');
-  const [isManualFormVisible, setIsManualFormVisible] = useState(false);
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isDemoSheetOpen, setIsDemoSheetOpen] = useState(false);
 
-  const handleManualLogin = () => {
-    if (!name.trim() || name.trim().length < 2) {
-      Alert.alert('Nombre requerido', 'Por favor ingresa tu nombre o razón social.');
+  const handleLogin = async () => {
+    setErrorMessage(null);
+
+    if (!identifier.trim()) {
+      setErrorMessage('Ingresa tu nombre de usuario o correo electrónico.');
       return;
     }
-    if (!phone.trim() || phone.replace(/\D/g, '').length < 6) {
-      Alert.alert('Teléfono requerido', 'Ingresa un número telefónico de contacto válido.');
+    if (!password.trim()) {
+      setErrorMessage('Ingresa tu contraseña de acceso.');
       return;
     }
 
-    login({
-      name,
-      phone,
-      role: selectedRole,
-      deliveryAddress: selectedRole === 'CLIENT' ? deliveryAddress : undefined,
-      district: selectedRole === 'CLIENT' ? district : undefined,
-    });
+    setIsLoading(true);
+    hapticImpact('light');
+
+    try {
+      const result = await login(identifier, password);
+      if (!result.success) {
+        setErrorMessage(result.error || 'Credenciales incorrectas.');
+      }
+    } catch {
+      setErrorMessage('Ocurrió un error inesperado al iniciar sesión.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Helper para rellenar campos en modo desarrollo/pruebas sin bypassear la autenticación
+  const handleSelectDemoCredentials = (userValue: string, passValue: string) => {
+    hapticSelection();
+    setIdentifier(userValue);
+    setPassword(passValue);
+    setErrorMessage(null);
   };
 
   return (
@@ -67,240 +83,230 @@ export const LoginScreen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Logo y Branding */}
+          {/* Hero Branding */}
           <View style={styles.brandHero}>
             <View style={styles.logoCircle}>
-              <Ionicons name="cube" size={36} color={COLORS.primary} />
+              <Ionicons name="cube" size={38} color={COLORS.primary} />
             </View>
             <Text style={styles.appName}>Gestor de Rutas</Text>
             <Text style={styles.appTagline}>
-              Logística, Distribución de Carga y Portal de Clientes
+              Sistema Integral de Logística y Portal de Clientes
             </Text>
           </View>
 
-          {/* Selector de Rol */}
-          <Text style={styles.sectionTitle}>¿Cómo deseas ingresar?</Text>
-          <View style={styles.roleTabsRow}>
-            <TouchableOpacity
-              style={[
-                styles.roleCard,
-                selectedRole === 'DISTRIBUTOR' && styles.roleCardActive,
-              ]}
-              onPress={() => {
-                setSelectedRole('DISTRIBUTOR');
-                hapticSelection();
-              }}
-              activeOpacity={0.8}
-            >
-              <View
-                style={[
-                  styles.roleIconCircle,
-                  selectedRole === 'DISTRIBUTOR' && { backgroundColor: COLORS.primary },
-                ]}
-              >
-                <Ionicons
-                  name="bicycle"
-                  size={22}
-                  color={selectedRole === 'DISTRIBUTOR' ? '#FFFFFF' : COLORS.primary}
-                />
-              </View>
-              <Text
-                style={[
-                  styles.roleTitle,
-                  selectedRole === 'DISTRIBUTOR' && styles.roleTitleActive,
-                ]}
-              >
-                Distribuidor
-              </Text>
-              <Text style={styles.roleSub}>Chofer / Repartidor</Text>
-            </TouchableOpacity>
+          {/* Tarjeta Principal de Inicio de Sesión */}
+          <View style={styles.loginCard}>
+            <Text style={styles.cardHeaderTitle}>Iniciar Sesión</Text>
+            <Text style={styles.cardHeaderSubtitle}>
+              Ingresa tus credenciales para acceder a tu panel correspondiente
+            </Text>
 
-            <TouchableOpacity
-              style={[
-                styles.roleCard,
-                selectedRole === 'CLIENT' && styles.roleCardActive,
-              ]}
-              onPress={() => {
-                setSelectedRole('CLIENT');
-                hapticSelection();
-              }}
-              activeOpacity={0.8}
-            >
-              <View
-                style={[
-                  styles.roleIconCircle,
-                  selectedRole === 'CLIENT' && { backgroundColor: COLORS.primary },
-                ]}
+            {/* Mensaje de Error si aplica */}
+            {errorMessage && (
+              <View style={styles.errorBanner}>
+                <Ionicons name="alert-circle" size={18} color={COLORS.danger} />
+                <Text style={styles.errorBannerText}>{errorMessage}</Text>
+              </View>
+            )}
+
+            {/* Campo: Usuario / Correo */}
+            <Text style={styles.inputLabel}>Usuario o Correo Electrónico</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons
+                name="person-outline"
+                size={20}
+                color={COLORS.textSecondary}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Ej. distribuidor o donpepe@bodega.com"
+                placeholderTextColor={COLORS.textMuted}
+                value={identifier}
+                onChangeText={(val) => {
+                  setIdentifier(val);
+                  if (errorMessage) setErrorMessage(null);
+                }}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+              />
+            </View>
+
+            {/* Campo: Contraseña */}
+            <Text style={styles.inputLabel}>Contraseña de Acceso</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color={COLORS.textSecondary}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Ingresa tu contraseña"
+                placeholderTextColor={COLORS.textMuted}
+                value={password}
+                onChangeText={(val) => {
+                  setPassword(val);
+                  if (errorMessage) setErrorMessage(null);
+                }}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                style={styles.passwordToggleBtn}
+                onPress={() => setShowPassword(!showPassword)}
+                activeOpacity={0.7}
               >
                 <Ionicons
-                  name="storefront"
-                  size={22}
-                  color={selectedRole === 'CLIENT' ? '#FFFFFF' : COLORS.primary}
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color={COLORS.textSecondary}
                 />
-              </View>
-              <Text
-                style={[
-                  styles.roleTitle,
-                  selectedRole === 'CLIENT' && styles.roleTitleActive,
-                ]}
-              >
-                Cliente Final
+              </TouchableOpacity>
+            </View>
+
+            {/* Aviso de RBAC Inteligente */}
+            <View style={styles.rbacNoticeRow}>
+              <Ionicons name="shield-checkmark-outline" size={16} color={COLORS.primary} />
+              <Text style={styles.rbacNoticeText}>
+                Acceso RBAC: El sistema detectará automáticamente tu perfil (Distribuidor, Cliente o Admin).
               </Text>
-              <Text style={styles.roleSub}>Negocio / Hogar</Text>
+            </View>
+
+            {/* Botón Principal de Acceso */}
+            <TouchableOpacity
+              style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
+              onPress={handleLogin}
+              disabled={isLoading}
+              activeOpacity={0.88}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Text style={styles.submitButtonText}>Ingresar al Sistema</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                </>
+              )}
             </TouchableOpacity>
           </View>
 
-          {/* Acceso Rápido con Perfiles de Demostración */}
-          <View style={styles.quickAccessSection}>
-            <View style={styles.quickAccessHeader}>
-              <Ionicons name="flash" size={16} color="#D97706" />
-              <Text style={styles.quickAccessTitle}>Acceso Rápido en 1 Toque (Demo)</Text>
-            </View>
+          {/* Ayuda y Soporte */}
+          <View style={styles.supportBox}>
+            <Text style={styles.supportText}>
+              ¿No tienes una cuenta aún? Los nuevos clientes y distribuidores son dados de alta por el Administrador de la flota.
+            </Text>
+          </View>
 
-            {selectedRole === 'DISTRIBUTOR' ? (
-              <TouchableOpacity
-                style={styles.demoProfileCard}
-                onPress={() => loginWithDemoProfile('user-dist-1')}
-                activeOpacity={0.8}
-              >
-                <View style={styles.demoAvatar}>
-                  <Text style={{ fontSize: 20 }}>👨‍✈️</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.demoProfileName}>Carlos Mendoza</Text>
-                  <Text style={styles.demoProfileDetails}>
-                    Conductor Principal • Camión 02 (Placa BZ-492)
-                  </Text>
-                </View>
-                <View style={styles.enterBadge}>
-                  <Text style={styles.enterBadgeText}>INGRESAR</Text>
-                  <Ionicons name="arrow-forward" size={12} color="#FFFFFF" />
-                </View>
-              </TouchableOpacity>
-            ) : (
-              <View style={{ gap: 8 }}>
+          {/* Acordeón de Cuentas de Demostración para Pruebas Rápidas */}
+          <View style={styles.demoHelperContainer}>
+            <TouchableOpacity
+              style={styles.demoHelperHeader}
+              onPress={() => {
+                setIsDemoSheetOpen(!isDemoSheetOpen);
+                hapticImpact('light');
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.demoHelperHeaderLeft}>
+                <Ionicons name="key-outline" size={16} color={COLORS.secondary} />
+                <Text style={styles.demoHelperTitle}>
+                  Credenciales de Demostración para Pruebas
+                </Text>
+              </View>
+              <Ionicons
+                name={isDemoSheetOpen ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={COLORS.textSecondary}
+              />
+            </TouchableOpacity>
+
+            {isDemoSheetOpen && (
+              <View style={styles.demoHelperBody}>
+                <Text style={styles.demoHelperDesc}>
+                  Toca una cuenta para completar automáticamente el formulario y probar la autenticación real:
+                </Text>
+
+                {/* Cuenta Distribuidor */}
                 <TouchableOpacity
-                  style={styles.demoProfileCard}
-                  onPress={() => loginWithDemoProfile('user-cust-1')}
-                  activeOpacity={0.8}
+                  style={styles.demoCredentialItem}
+                  onPress={() => handleSelectDemoCredentials('distribuidor', '123')}
+                  activeOpacity={0.7}
                 >
-                  <View style={styles.demoAvatar}>
-                    <Text style={{ fontSize: 20 }}>🏪</Text>
+                  <View style={styles.demoItemBadgeDist}>
+                    <Ionicons name="bicycle" size={14} color="#FFFFFF" />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.demoProfileName}>Bodega Don Pepe</Text>
-                    <Text style={styles.demoProfileDetails}>
-                      Cliente Frecuente • San Borja (Av. Javier Prado)
+                    <Text style={styles.demoItemTitle}>Rol: Distribuidor / Conductor</Text>
+                    <Text style={styles.demoItemDetails}>
+                      Usuario: <Text style={styles.boldText}>distribuidor</Text> • Clave: <Text style={styles.boldText}>123</Text>
                     </Text>
+                    <Text style={styles.demoItemSub}>Carlos Mendoza (Camión 02)</Text>
                   </View>
-                  <View style={styles.enterBadge}>
-                    <Text style={styles.enterBadgeText}>INGRESAR</Text>
-                    <Ionicons name="arrow-forward" size={12} color="#FFFFFF" />
-                  </View>
+                  <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
                 </TouchableOpacity>
 
+                {/* Cuenta Cliente 1 */}
                 <TouchableOpacity
-                  style={styles.demoProfileCard}
-                  onPress={() => loginWithDemoProfile('user-cust-2')}
-                  activeOpacity={0.8}
+                  style={styles.demoCredentialItem}
+                  onPress={() => handleSelectDemoCredentials('cliente', '123')}
+                  activeOpacity={0.7}
                 >
-                  <View style={styles.demoAvatar}>
-                    <Text style={{ fontSize: 20 }}>🍽️</Text>
+                  <View style={styles.demoItemBadgeClient}>
+                    <Ionicons name="storefront" size={14} color="#FFFFFF" />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.demoProfileName}>Restaurante El Buen Sabor</Text>
-                    <Text style={styles.demoProfileDetails}>
-                      Cliente Frecuente • Miraflores (Av. Benavides)
+                    <Text style={styles.demoItemTitle}>Rol: Cliente Final</Text>
+                    <Text style={styles.demoItemDetails}>
+                      Usuario: <Text style={styles.boldText}>cliente</Text> • Clave: <Text style={styles.boldText}>123</Text>
                     </Text>
+                    <Text style={styles.demoItemSub}>Bodega Don Pepe (San Borja)</Text>
                   </View>
-                  <View style={styles.enterBadge}>
-                    <Text style={styles.enterBadgeText}>INGRESAR</Text>
-                    <Ionicons name="arrow-forward" size={12} color="#FFFFFF" />
+                  <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
+                </TouchableOpacity>
+
+                {/* Cuenta Cliente 2 */}
+                <TouchableOpacity
+                  style={styles.demoCredentialItem}
+                  onPress={() => handleSelectDemoCredentials('restaurante', '123')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.demoItemBadgeClient}>
+                    <Ionicons name="restaurant" size={14} color="#FFFFFF" />
                   </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.demoItemTitle}>Rol: Cliente Final (Restaurante)</Text>
+                    <Text style={styles.demoItemDetails}>
+                      Usuario: <Text style={styles.boldText}>restaurante</Text> • Clave: <Text style={styles.boldText}>123</Text>
+                    </Text>
+                    <Text style={styles.demoItemSub}>Restaurante El Buen Sabor</Text>
+                  </View>
+                  <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
+                </TouchableOpacity>
+
+                {/* Cuenta Administrador */}
+                <TouchableOpacity
+                  style={styles.demoCredentialItem}
+                  onPress={() => handleSelectDemoCredentials('admin', 'admin')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.demoItemBadgeAdmin}>
+                    <Ionicons name="settings-sharp" size={14} color="#FFFFFF" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.demoItemTitle}>Rol: Administrador General</Text>
+                    <Text style={styles.demoItemDetails}>
+                      Usuario: <Text style={styles.boldText}>admin</Text> • Clave: <Text style={styles.boldText}>admin</Text>
+                    </Text>
+                    <Text style={styles.demoItemSub}>Gestión de Cuentas y Flota</Text>
+                  </View>
+                  <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
                 </TouchableOpacity>
               </View>
             )}
           </View>
-
-          {/* Formulario Manual Opcional */}
-          <TouchableOpacity
-            style={styles.manualToggleBtn}
-            onPress={() => {
-              setIsManualFormVisible(!isManualFormVisible);
-              hapticImpact('light');
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.manualToggleText}>
-              {isManualFormVisible
-                ? 'Ocultar Formulario Personalizado'
-                : 'O ingresar con mis propios datos'}
-            </Text>
-            <Ionicons
-              name={isManualFormVisible ? 'chevron-up' : 'chevron-down'}
-              size={16}
-              color={COLORS.primary}
-            />
-          </TouchableOpacity>
-
-          {isManualFormVisible && (
-            <View style={styles.manualCard}>
-              <Text style={styles.inputLabel}>
-                {selectedRole === 'DISTRIBUTOR'
-                  ? 'Nombre del Conductor / Repartidor *'
-                  : 'Nombre del Cliente o Negocio *'}
-              </Text>
-              <TextInput
-                style={styles.inputField}
-                placeholder="Ej. Roberto Quispe"
-                placeholderTextColor={COLORS.textMuted}
-                value={name}
-                onChangeText={setName}
-              />
-
-              <Text style={styles.inputLabel}>Teléfono / WhatsApp *</Text>
-              <TextInput
-                style={styles.inputField}
-                placeholder="Ej. 987654321"
-                placeholderTextColor={COLORS.textMuted}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
-
-              {selectedRole === 'CLIENT' && (
-                <>
-                  <Text style={styles.inputLabel}>Ciudad o Distrito *</Text>
-                  <TextInput
-                    style={styles.inputField}
-                    placeholder="Ej. San Borja, Surco, Miraflores..."
-                    placeholderTextColor={COLORS.textMuted}
-                    value={district}
-                    onChangeText={setDistrict}
-                  />
-
-                  <Text style={styles.inputLabel}>Dirección de Entrega *</Text>
-                  <TextInput
-                    style={styles.inputField}
-                    placeholder="Ej. Calle Los Sauces 120"
-                    placeholderTextColor={COLORS.textMuted}
-                    value={deliveryAddress}
-                    onChangeText={setDeliveryAddress}
-                  />
-                </>
-              )}
-
-              <TouchableOpacity
-                style={styles.submitLoginBtn}
-                onPress={handleManualLogin}
-                activeOpacity={0.88}
-              >
-                <Text style={styles.submitLoginBtnText}>
-                  Ingresar como {selectedRole === 'DISTRIBUTOR' ? 'Distribuidor' : 'Cliente'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -318,7 +324,7 @@ const styles = StyleSheet.create({
   },
   brandHero: {
     alignItems: 'center',
-    paddingVertical: SPACING.xl,
+    paddingVertical: SPACING.lg,
   },
   logoCircle: {
     width: 68,
@@ -329,7 +335,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: '#BFDBFE',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   appName: {
     fontSize: 24,
@@ -345,172 +351,211 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     lineHeight: 18,
   },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: COLORS.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 10,
-    marginTop: 10,
-  },
-  roleTabsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: SPACING.xl,
-  },
-  roleCard: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    elevation: 2,
-  },
-  roleCardActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: '#F8FBFF',
-  },
-  roleIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#EFF6FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  roleTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  roleTitleActive: {
-    color: COLORS.primary,
-  },
-  roleSub: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    marginTop: 2,
-  },
-  quickAccessSection: {
+  loginCard: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     padding: SPACING.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
-    marginBottom: SPACING.lg,
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
   },
-  quickAccessHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
-  },
-  quickAccessTitle: {
-    fontSize: 13,
+  cardHeaderTitle: {
+    fontSize: 18,
     fontWeight: '800',
-    color: '#92400E',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: COLORS.secondary,
   },
-  demoProfileCard: {
+  cardHeaderSubtitle: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 3,
+    marginBottom: SPACING.md,
+    lineHeight: 16,
+  },
+  errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
     borderRadius: RADIUS.md,
-    padding: 12,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    padding: 10,
+    gap: 8,
+    marginBottom: 14,
   },
-  demoAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  demoProfileName: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  demoProfileDetails: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  enterBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: RADIUS.sm,
-    gap: 4,
-  },
-  enterBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  manualToggleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    gap: 6,
-  },
-  manualToggleText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  manualCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginTop: 6,
+  errorBannerText: {
+    fontSize: 12,
+    color: COLORS.danger,
+    fontWeight: '600',
+    flex: 1,
   },
   inputLabel: {
     fontSize: 12,
     fontWeight: '700',
     color: COLORS.textSecondary,
     marginBottom: 6,
-    marginTop: 8,
+    marginTop: 6,
   },
-  inputField: {
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#F8FAFC',
     borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    height: TOUCH_TARGET.buttonHeight,
+    marginBottom: 10,
+  },
+  inputIcon: {
+    marginRight: 8,
+  },
+  textInput: {
+    flex: 1,
     fontSize: 14,
     color: COLORS.textPrimary,
-    minHeight: 46,
+    height: '100%',
   },
-  submitLoginBtn: {
+  passwordToggleBtn: {
+    padding: 6,
+  },
+  rbacNoticeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: RADIUS.md,
+    padding: 10,
+    gap: 8,
+    marginTop: 6,
+    marginBottom: 16,
+  },
+  rbacNoticeText: {
+    fontSize: 11,
+    color: COLORS.primary,
+    fontWeight: '600',
+    flex: 1,
+    lineHeight: 15,
+  },
+  submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: COLORS.primary,
     borderRadius: RADIUS.md,
     height: TOUCH_TARGET.buttonHeight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 18,
-    elevation: 3,
+    gap: 8,
+    elevation: 2,
   },
-  submitLoginBtnText: {
+  submitButtonDisabled: {
+    opacity: 0.7,
+  },
+  submitButtonText: {
     fontSize: 15,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  supportBox: {
+    marginTop: 18,
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  supportText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  /* Helper de Demostración */
+  demoHelperContainer: {
+    marginTop: 20,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+  },
+  demoHelperHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#F8FAFC',
+  },
+  demoHelperHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  demoHelperTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.secondary,
+  },
+  demoHelperBody: {
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    gap: 8,
+  },
+  demoHelperDesc: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginBottom: 4,
+    lineHeight: 15,
+  },
+  demoCredentialItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: RADIUS.sm,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 10,
+  },
+  demoItemBadgeDist: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  demoItemBadgeClient: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#059669',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  demoItemBadgeAdmin: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#475569',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  demoItemTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  demoItemDetails: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 1,
+  },
+  demoItemSub: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+  },
+  boldText: {
+    fontWeight: '800',
+    color: COLORS.textPrimary,
   },
 });

@@ -30,12 +30,23 @@ import { hapticImpact, hapticSelection } from '../utils/haptics';
 type Props = NativeStackScreenProps<RootStackParamList, 'WelcomeScreen'>;
 
 export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
-  const { user, logout, switchRole } = useAuth();
+  const { user, logout } = useAuth();
   const { orders, statistics, clearAllOrders } = useOrders();
   const { customers } = useCustomers();
   const { products } = useProducts();
 
   const activeDeliveriesCount = statistics.pendingOrders + statistics.inTransitOrders;
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Cerrar Sesión',
+      '¿Deseas salir del sistema?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Sí, Salir', style: 'destructive', onPress: logout },
+      ]
+    );
+  };
 
   const handleClearAll = () => {
     Alert.alert(
@@ -81,32 +92,14 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
               </View>
               <Text style={styles.appSubtitle} numberOfLines={1}>
-                👨‍✈️ {user?.name || 'Carlos Mendoza'} • {user?.vehicleInfo || 'Camión 02'}
+                👨‍✈️ {user?.name || 'Distribuidor'} • {user?.vehicleInfo || 'Unidad Asignada'}
               </Text>
             </View>
 
             <View style={styles.topHeaderActions}>
               <TouchableOpacity
-                style={styles.switchRoleHeaderBtn}
-                onPress={() => {
-                  Alert.alert(
-                    'Cambiar a Modo Cliente',
-                    '¿Deseas alternar la vista al portal de Cliente Final?',
-                    [
-                      { text: 'Cancelar', style: 'cancel' },
-                      { text: 'Sí, Cambiar Rol', onPress: switchRole },
-                    ]
-                  );
-                }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="storefront-outline" size={16} color={COLORS.primary} />
-                <Text style={styles.switchRoleHeaderText}>Cliente</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
                 style={styles.logoutHeaderBtn}
-                onPress={logout}
+                onPress={handleLogout}
                 activeOpacity={0.7}
               >
                 <Ionicons name="log-out-outline" size={18} color={COLORS.danger} />

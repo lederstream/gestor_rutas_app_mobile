@@ -30,9 +30,20 @@ import { formatCurrency, formatDateTime } from '../utils/formatters';
 import { hapticImpact, hapticNotification, hapticSelection } from '../utils/haptics';
 
 export const ClientHomeScreen: React.FC = () => {
-  const { user, logout, switchRole } = useAuth();
+  const { user, logout } = useAuth();
   const { orders, addOrder } = useOrders();
   const { products } = useProducts();
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Cerrar Sesión',
+      '¿Deseas salir del portal de cliente?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Sí, Salir', style: 'destructive', onPress: logout },
+      ]
+    );
+  };
 
   // Modal para confirmar pedido rápido
   const [selectedProductToOrder, setSelectedProductToOrder] = useState<Product | null>(null);
@@ -140,26 +151,8 @@ export const ClientHomeScreen: React.FC = () => {
 
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={styles.switchRoleBtn}
-            onPress={() => {
-              Alert.alert(
-                'Cambiar a Modo Distribuidor',
-                '¿Deseas alternar la vista al rol de Conductor / Distribuidor?',
-                [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Sí, Cambiar Rol', onPress: switchRole },
-                ]
-              );
-            }}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="swap-horizontal" size={16} color={COLORS.primary} />
-            <Text style={styles.switchRoleText}>Modo Chofer</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
             style={styles.logoutBtn}
-            onPress={logout}
+            onPress={handleLogout}
             activeOpacity={0.7}
           >
             <Ionicons name="log-out-outline" size={18} color={COLORS.danger} />

@@ -5,10 +5,11 @@
  * ============================================================================
  */
 
-export type UserRole = 'DISTRIBUTOR' | 'CLIENT';
+export type UserRole = 'ADMIN' | 'DISTRIBUTOR' | 'CLIENT';
 
 export interface User {
   id: string;
+  username: string;
   name: string;
   phone: string;
   role: UserRole;
@@ -27,11 +28,22 @@ export interface User {
 }
 
 /**
- * Perfiles preconfigurados para demostraciones y pruebas rápidas en 1 toque
+ * Cuenta registrada en el sistema de autenticación (Credenciales + Perfil)
+ * En una infraestructura real con backend, el password se valida hasheado en el servidor
  */
-export const DEMO_PROFILES: User[] = [
+export interface UserAccount extends User {
+  password: string;
+}
+
+/**
+ * Cuentas iniciales registradas en el sistema para RBAC
+ */
+export const REGISTERED_ACCOUNTS: UserAccount[] = [
   {
     id: 'user-dist-1',
+    username: 'distribuidor',
+    email: 'carlos@distribucion.com',
+    password: '123',
     name: 'Carlos Mendoza',
     phone: '987111222',
     role: 'DISTRIBUTOR',
@@ -40,6 +52,9 @@ export const DEMO_PROFILES: User[] = [
   },
   {
     id: 'user-cust-1',
+    username: 'cliente',
+    email: 'donpepe@bodega.com',
+    password: '123',
     name: 'Bodega Don Pepe',
     phone: '987654321',
     role: 'CLIENT',
@@ -52,6 +67,9 @@ export const DEMO_PROFILES: User[] = [
   },
   {
     id: 'user-cust-2',
+    username: 'restaurante',
+    email: 'buensabor@restaurante.com',
+    password: '123',
     name: 'Restaurante El Buen Sabor',
     phone: '991234567',
     role: 'CLIENT',
@@ -61,5 +79,14 @@ export const DEMO_PROFILES: User[] = [
     addressReference: 'Puerta lateral de descarga',
     latitude: -12.1192,
     longitude: -77.0298,
+  },
+  {
+    id: 'user-admin-1',
+    username: 'admin',
+    email: 'admin@gestor.com',
+    password: 'admin',
+    name: 'Administrador General',
+    phone: '900000000',
+    role: 'ADMIN',
   },
 ];
