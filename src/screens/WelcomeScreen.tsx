@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/RootNavigator';
+import { useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrderContext';
 import { useCustomers } from '../context/CustomerContext';
 import { useProducts } from '../context/ProductContext';
@@ -29,6 +30,7 @@ import { hapticImpact, hapticSelection } from '../utils/haptics';
 type Props = NativeStackScreenProps<RootStackParamList, 'WelcomeScreen'>;
 
 export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
+  const { user, logout, switchRole } = useAuth();
   const { orders, statistics, clearAllOrders } = useOrders();
   const { customers } = useCustomers();
   const { products } = useProducts();
@@ -78,9 +80,37 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
                   <Text style={styles.onlineText}>En Línea</Text>
                 </View>
               </View>
-              <Text style={styles.appSubtitle}>
-                Logística y Distribución de Última Milla
+              <Text style={styles.appSubtitle} numberOfLines={1}>
+                👨‍✈️ {user?.name || 'Carlos Mendoza'} • {user?.vehicleInfo || 'Camión 02'}
               </Text>
+            </View>
+
+            <View style={styles.topHeaderActions}>
+              <TouchableOpacity
+                style={styles.switchRoleHeaderBtn}
+                onPress={() => {
+                  Alert.alert(
+                    'Cambiar a Modo Cliente',
+                    '¿Deseas alternar la vista al portal de Cliente Final?',
+                    [
+                      { text: 'Cancelar', style: 'cancel' },
+                      { text: 'Sí, Cambiar Rol', onPress: switchRole },
+                    ]
+                  );
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="storefront-outline" size={16} color={COLORS.primary} />
+                <Text style={styles.switchRoleHeaderText}>Cliente</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.logoutHeaderBtn}
+                onPress={logout}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="log-out-outline" size={18} color={COLORS.danger} />
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -367,6 +397,38 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: 2,
     fontWeight: '500',
+  },
+  topHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 6,
+  },
+  switchRoleHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: RADIUS.md,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  switchRoleHeaderText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  logoutHeaderBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
   /* Hero de Ruta Activa */
   activeRouteHeroCard: {
