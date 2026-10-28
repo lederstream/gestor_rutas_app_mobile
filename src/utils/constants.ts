@@ -210,3 +210,29 @@ export const DISTRICT_COORDINATES: Record<string, { latitude: number; longitude:
   'Jesús María': { latitude: -12.0747, longitude: -77.0483 },
   'Los Olivos': { latitude: -11.9793, longitude: -77.0711 },
 };
+
+export const SPACING = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 24,
+  xxxl: 32,
+};
+
+export const RADIUS = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  full: 9999,
+};
+
+export const TOUCH_TARGET = {
+  min: 48,
+  buttonHeight: 52,
+  compactHeight: 40,
+};
+

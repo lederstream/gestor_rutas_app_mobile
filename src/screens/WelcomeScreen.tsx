@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * SCREEN: WelcomeScreen.tsx
- * Dashboard Principal: Tema Claro Premium con Emojis Vivos y Tarjetas Ergonómicas
+ * Tablero Principal Ejecutivo: Máxima Claridad Visual y Acceso Rápido
  * ============================================================================
  */
 
@@ -22,8 +22,9 @@ import { RootStackParamList } from '../navigation/RootNavigator';
 import { useOrders } from '../context/OrderContext';
 import { useCustomers } from '../context/CustomerContext';
 import { useProducts } from '../context/ProductContext';
-import { COLORS } from '../utils/constants';
+import { COLORS, SPACING, RADIUS } from '../utils/constants';
 import { formatCurrency } from '../utils/formatters';
+import { hapticImpact, hapticSelection } from '../utils/haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WelcomeScreen'>;
 
@@ -32,38 +33,41 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   const { customers } = useCustomers();
   const { products } = useProducts();
 
+  const activeDeliveriesCount = statistics.pendingOrders + statistics.inTransitOrders;
+
   const handleClearAll = () => {
     Alert.alert(
-      'Limpiar Lista de Pedidos',
-      '¿Deseas vaciar los pedidos de la jornada actual? Tus clientes y catálogo de productos se mantendrán intactos.',
+      'Limpiar Pedidos de la Jornada',
+      '¿Deseas reiniciar los pedidos de hoy? Tus clientes y catálogo permanecerán intactos.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Sí, Vaciar Pedidos',
+          text: 'Sí, Reiniciar',
           style: 'destructive',
-          onPress: () => clearAllOrders(),
+          onPress: () => {
+            hapticImpact('heavy');
+            clearAllOrders();
+          },
         },
       ]
     );
   };
 
-  const activeDeliveriesCount = statistics.pendingOrders + statistics.inTransitOrders;
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-      
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* =================================================================== */}
-        {/* CABECERA PRINCIPAL CON VIDA Y EMOJIS */}
+        {/* CABECERA PRINCIPAL LIMPIA Y PROFESIONAL */}
         {/* =================================================================== */}
         <View style={styles.topHeader}>
           <View style={styles.brandRow}>
             <View style={styles.logoBadge}>
-              <Text style={styles.logoEmoji}>🚚</Text>
+              <Ionicons name="cube" size={24} color={COLORS.primary} />
             </View>
 
             <View style={styles.brandTextCol}>
@@ -75,130 +79,67 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
               </View>
               <Text style={styles.appSubtitle}>
-                Logística, Clientes y Despachos en Vivo 📍
+                Logística y Distribución de Última Milla
               </Text>
             </View>
-          </View>
-
-          {/* Barra de Resumen Superior con Emojis */}
-          <View style={styles.metricsPillsRow}>
-            <TouchableOpacity
-              style={styles.metricPill}
-              onPress={() => navigation.navigate('CustomerListScreen')}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.pillEmoji}>👥</Text>
-              <Text style={styles.metricPillNumber}>{customers.length}</Text>
-              <Text style={styles.metricPillLabel}>Clientes</Text>
-            </TouchableOpacity>
-
-            <View style={styles.metricPillDivider} />
-
-            <TouchableOpacity
-              style={styles.metricPill}
-              onPress={() => navigation.navigate('ProductListScreen')}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.pillEmoji}>🏷️</Text>
-              <Text style={styles.metricPillNumber}>{products.length}</Text>
-              <Text style={styles.metricPillLabel}>Productos</Text>
-            </TouchableOpacity>
-
-            <View style={styles.metricPillDivider} />
-
-            <TouchableOpacity
-              style={styles.metricPill}
-              onPress={() => navigation.navigate('OrderListScreen')}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.pillEmoji}>📦</Text>
-              <Text style={styles.metricPillNumber}>{orders.length}</Text>
-              <Text style={styles.metricPillLabel}>En Cola</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
         {/* =================================================================== */}
-        {/* MÉTRICAS DE OPERACIÓN DEL DÍA */}
+        {/* BANNER PRINCIPAL DE ACCIÓN: CONDUCTOR / OPERACIÓN EN RUTA */}
         {/* =================================================================== */}
-        {orders.length > 0 ? (
-          <View style={styles.statsCard}>
-            <View style={styles.statsHeader}>
-              <View style={styles.statsTitleRow}>
-                <Text style={styles.headerIconEmoji}>📊</Text>
-                <Text style={styles.statsTitle}>Operación de Hoy</Text>
+        {activeDeliveriesCount > 0 ? (
+          <View style={styles.activeRouteHeroCard}>
+            <View style={styles.activeHeroTop}>
+              <View style={styles.activeHeroBadge}>
+                <Ionicons name="bicycle" size={14} color="#FFFFFF" />
+                <Text style={styles.activeHeroBadgeText}>RUTA EN CURSO</Text>
               </View>
-
-              <View style={styles.effectivityPill}>
-                <Text style={{ fontSize: 13 }}>🎯</Text>
-                <Text style={styles.effectivityText}>
-                  {statistics.completedDeliveriesRate}% Efectividad
-                </Text>
-              </View>
+              <Text style={styles.activeHeroProgress}>
+                {statistics.deliveredOrders} de {statistics.totalOrders} entregados ({statistics.completedDeliveriesRate}%)
+              </Text>
             </View>
 
-            <View style={styles.statsValuesGrid}>
-              <View style={styles.statCol}>
-                <Text style={styles.statLargeNumber}>{statistics.totalOrders}</Text>
-                <View style={styles.statSubRow}>
-                  <Text style={styles.statMiniEmoji}>📦</Text>
-                  <Text style={styles.statLabelText}>Total Pedidos</Text>
-                </View>
-              </View>
+            <Text style={styles.activeHeroTitle}>
+              {activeDeliveriesCount} {activeDeliveriesCount === 1 ? 'parada pendiente' : 'paradas pendientes'} por entregar
+            </Text>
+            <Text style={styles.activeHeroDesc}>
+              Cobranza en ruta estimada: {formatCurrency(statistics.pendingCollection)}
+            </Text>
 
-              <View style={styles.statColDivider} />
+            <View style={styles.activeHeroButtonsRow}>
+              <TouchableOpacity
+                style={styles.heroButtonPrimary}
+                onPress={() => {
+                  hapticImpact('medium');
+                  navigation.navigate('MapRouteScreen');
+                }}
+                activeOpacity={0.88}
+              >
+                <Ionicons name="navigate" size={18} color="#FFFFFF" />
+                <Text style={styles.heroButtonPrimaryText}>Abrir Mapa de Ruta</Text>
+              </TouchableOpacity>
 
-              <View style={styles.statCol}>
-                <Text style={[styles.statLargeNumber, { color: COLORS.statusInTransit }]}>
-                  {statistics.inTransitOrders}
-                </Text>
-                <View style={styles.statSubRow}>
-                  <Text style={styles.statMiniEmoji}>🚚</Text>
-                  <Text style={styles.statLabelText}>En Ruta</Text>
-                </View>
-              </View>
-
-              <View style={styles.statColDivider} />
-
-              <View style={styles.statCol}>
-                <Text style={[styles.statLargeNumber, { color: COLORS.statusDelivered }]}>
-                  {statistics.deliveredOrders}
-                </Text>
-                <View style={styles.statSubRow}>
-                  <Text style={styles.statMiniEmoji}>✅</Text>
-                  <Text style={styles.statLabelText}>Entregados</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Fila de Recaudación */}
-            <View style={styles.revenueRow}>
-              <View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Text style={{ fontSize: 13 }}>💰</Text>
-                  <Text style={styles.revenueCaption}>Cobranza Prevista</Text>
-                </View>
-                <Text style={styles.revenueAmount}>
-                  {formatCurrency(statistics.pendingCollection + statistics.totalRevenue)}
-                </Text>
-              </View>
-
-              <View style={styles.pendingCollectionBox}>
-                <Text style={styles.pendingCollectionLabel}>Pendiente en Ruta:</Text>
-                <Text style={styles.pendingCollectionValue}>
-                  {formatCurrency(statistics.pendingCollection)}
-                </Text>
-              </View>
+              <TouchableOpacity
+                style={styles.heroButtonSecondary}
+                onPress={() => {
+                  hapticSelection();
+                  navigation.navigate('OrderListScreen');
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="list" size={18} color="#FFFFFF" />
+                <Text style={styles.heroButtonSecondaryText}>Ver Lista</Text>
+              </TouchableOpacity>
             </View>
           </View>
         ) : (
-          /* Estado inicial amigable cuando aún no hay pedidos cargados */
           <View style={styles.emptyWelcomeCard}>
             <View style={styles.emptyIconCircle}>
-              <Text style={{ fontSize: 26 }}>✨</Text>
+              <Ionicons name="rocket-outline" size={26} color={COLORS.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.emptyCardTitle}>¡Listo para Despachar! 🚀</Text>
+              <Text style={styles.emptyCardTitle}>¡Todo Listo para Despachar!</Text>
               <Text style={styles.emptyCardDesc}>
                 Crea tu primer pedido con un cliente registrado para trazar la ruta en el mapa GPS.
               </Text>
@@ -207,201 +148,149 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
         )}
 
         {/* =================================================================== */}
-        {/* ACCIONES PRINCIPALES DESTACADAS */}
+        {/* BOTÓN RÁPIDO PARA CREAR PEDIDO (DESTACADO Y ERGONÓMICO) */}
         {/* =================================================================== */}
-        <View style={styles.sectionTitleWrapper}>
-          <Text style={styles.sectionHeaderTitle}>⚡ Acciones Rápidas</Text>
+        <TouchableOpacity
+          style={styles.newOrderActionCard}
+          onPress={() => {
+            hapticImpact('light');
+            navigation.navigate('CreateOrderScreen');
+          }}
+          activeOpacity={0.88}
+        >
+          <View style={styles.newOrderIconBox}>
+            <Ionicons name="add" size={24} color="#FFFFFF" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.newOrderTitle}>Generar Nuevo Pedido</Text>
+            <Text style={styles.newOrderSubtitle}>
+              Asistente rápido en 3 pasos con autocompletado
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
+        </TouchableOpacity>
+
+        {/* =================================================================== */}
+        {/* TABLERO RESUMEN DE HOY (MÉTRICAS CLARAS, SIN SATURACIÓN) */}
+        {/* =================================================================== */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderTitle}>Operación de Hoy</Text>
+          {orders.length > 0 && (
+            <TouchableOpacity onPress={handleClearAll} activeOpacity={0.7}>
+              <Text style={styles.clearLinkText}>Reiniciar</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        <View style={styles.actionsContainer}>
-          {/* Botón Hero: Generar Nuevo Pedido */}
-          <TouchableOpacity
-            style={styles.heroButton}
-            onPress={() => navigation.navigate('CreateOrderScreen')}
-            activeOpacity={0.88}
-          >
-            <View style={styles.heroIconCircle}>
-              <Text style={styles.heroEmoji}>➕</Text>
-            </View>
+        <View style={styles.kpiGrid}>
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiNumber}>{statistics.totalOrders}</Text>
+            <Text style={styles.kpiLabel}>Total Pedidos</Text>
+          </View>
 
-            <View style={styles.heroTextCol}>
-              <View style={styles.heroBadgeRow}>
-                <Text style={styles.heroTitle}>Generar Nuevo Pedido</Text>
-                <View style={styles.heroTag}>
-                  <Text style={styles.heroTagText}>Rápido ⚡</Text>
-                </View>
-              </View>
-              <Text style={styles.heroSubtitle}>
-                Elige un cliente para autocompletar su dirección, GPS y productos
-              </Text>
-            </View>
+          <View style={styles.kpiCard}>
+            <Text style={[styles.kpiNumber, { color: COLORS.statusInTransit }]}>
+              {statistics.inTransitOrders}
+            </Text>
+            <Text style={styles.kpiLabel}>En Ruta</Text>
+          </View>
 
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textInverse} />
-          </TouchableOpacity>
+          <View style={styles.kpiCard}>
+            <Text style={[styles.kpiNumber, { color: COLORS.statusDelivered }]}>
+              {statistics.deliveredOrders}
+            </Text>
+            <Text style={styles.kpiLabel}>Entregados</Text>
+          </View>
 
-          {/* Botón Secundario: Mapa de Rutas GPS */}
-          <TouchableOpacity
-            style={styles.mapActionButton}
-            onPress={() => navigation.navigate('MapRouteScreen')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.mapIconCircle}>
-              <Text style={{ fontSize: 24 }}>🗺️</Text>
-            </View>
-
-            <View style={{ flex: 1 }}>
-              <Text style={styles.mapActionTitle}>Mapa de Rutas (GPS)</Text>
-              <Text style={styles.mapActionSubtitle}>
-                {activeDeliveriesCount > 0
-                  ? `${activeDeliveriesCount} paradas geolocalizadas listas para entrega 📍`
-                  : 'Navegación visual interactiva en tiempo real'}
-              </Text>
-            </View>
-
-            <View style={styles.mapActionEnd}>
-              {activeDeliveriesCount > 0 && (
-                <View style={styles.activeRoutePill}>
-                  <Text style={styles.activeRouteText}>{activeDeliveriesCount}</Text>
-                </View>
-              )}
-              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-            </View>
-          </TouchableOpacity>
+          <View style={styles.kpiCard}>
+            <Text style={[styles.kpiNumber, { color: COLORS.primary }]}>
+              {formatCurrency(statistics.totalRevenue)}
+            </Text>
+            <Text style={styles.kpiLabel}>Recaudado</Text>
+          </View>
         </View>
 
         {/* =================================================================== */}
-        {/* GESTIÓN OPERATIVA: FILAS RECTANGULARES ERGONÓMICAS CON EMOJIS */}
+        {/* MÓDULOS OPERATIVOS (TARJETAS AMPLIAS DE FÁCIL TOQUE) */}
         {/* =================================================================== */}
-        <View style={styles.sectionTitleWrapper}>
-          <Text style={styles.sectionHeaderTitle}>🗂️ Gestión Operativa</Text>
-          <Text style={styles.sectionHeaderSubtitle}>Módulos y Catálogos</Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderTitle}>Módulos y Catálogos</Text>
         </View>
 
         <View style={styles.modulesContainer}>
-          {/* Fila 1: Mis Clientes */}
+          {/* Módulo Clientes */}
           <TouchableOpacity
             style={styles.moduleRowCard}
-            onPress={() => navigation.navigate('CustomerListScreen')}
-            activeOpacity={0.7}
+            onPress={() => {
+              hapticSelection();
+              navigation.navigate('CustomerListScreen');
+            }}
+            activeOpacity={0.75}
           >
-            <View style={[styles.moduleIconBox, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
-              <Text style={styles.moduleEmoji}>👥</Text>
+            <View style={[styles.moduleIconBox, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="people" size={22} color={COLORS.primary} />
             </View>
-
             <View style={styles.moduleTextCol}>
               <Text style={styles.moduleTitle}>Mis Clientes</Text>
               <Text style={styles.moduleSubtitle}>
-                Directorio, teléfonos de contacto y puntos GPS fijados 📍
+                Directorio con WhatsApp y puntos GPS fijados
               </Text>
             </View>
-
-            <View style={styles.moduleEndCol}>
-              <View style={[styles.moduleCountBadge, { backgroundColor: '#EFF6FF' }]}>
-                <Text style={[styles.moduleCountText, { color: COLORS.primary }]}>
-                  {customers.length}
-                </Text>
-              </View>
+            <View style={styles.moduleEndBox}>
+              <Text style={styles.moduleCountBadge}>{customers.length}</Text>
               <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
             </View>
           </TouchableOpacity>
 
-          {/* Fila 2: Mis Productos */}
+          {/* Módulo Productos */}
           <TouchableOpacity
             style={styles.moduleRowCard}
-            onPress={() => navigation.navigate('ProductListScreen')}
-            activeOpacity={0.7}
+            onPress={() => {
+              hapticSelection();
+              navigation.navigate('ProductListScreen');
+            }}
+            activeOpacity={0.75}
           >
-            <View style={[styles.moduleIconBox, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }]}>
-              <Text style={styles.moduleEmoji}>🏷️</Text>
+            <View style={[styles.moduleIconBox, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="pricetags" size={22} color="#D97706" />
             </View>
-
             <View style={styles.moduleTextCol}>
-              <Text style={styles.moduleTitle}>Mis Productos y Servicios</Text>
+              <Text style={styles.moduleTitle}>Catálogo de Productos</Text>
               <Text style={styles.moduleSubtitle}>
-                Catálogo de precios y unidades de venta para pedidos 🛒
+                Precios y unidades de venta para carga
               </Text>
             </View>
-
-            <View style={styles.moduleEndCol}>
-              <View style={[styles.moduleCountBadge, { backgroundColor: '#FEF3C7' }]}>
-                <Text style={[styles.moduleCountText, { color: '#B45309' }]}>
-                  {products.length}
-                </Text>
-              </View>
+            <View style={styles.moduleEndBox}>
+              <Text style={[styles.moduleCountBadge, { color: '#B45309', backgroundColor: '#FEF3C7' }]}>
+                {products.length}
+              </Text>
               <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
             </View>
           </TouchableOpacity>
 
-          {/* Fila 3: Lista de Pedidos */}
+          {/* Módulo Hoja de Ruta */}
           <TouchableOpacity
             style={styles.moduleRowCard}
-            onPress={() => navigation.navigate('OrderListScreen')}
-            activeOpacity={0.7}
+            onPress={() => {
+              hapticSelection();
+              navigation.navigate('RouteSummaryModalOrScreen');
+            }}
+            activeOpacity={0.75}
           >
-            <View style={[styles.moduleIconBox, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
-              <Text style={styles.moduleEmoji}>📦</Text>
+            <View style={[styles.moduleIconBox, { backgroundColor: '#F3E8FF' }]}>
+              <Ionicons name="clipboard" size={22} color="#7C3AED" />
             </View>
-
             <View style={styles.moduleTextCol}>
-              <Text style={styles.moduleTitle}>Lista de Pedidos</Text>
+              <Text style={styles.moduleTitle}>Manifiesto y Carga</Text>
               <Text style={styles.moduleSubtitle}>
-                Control por estado, cobro en ruta y trazabilidad ⏱️
+                Consolidado en bodega móvil y arqueo de caja
               </Text>
             </View>
-
-            <View style={styles.moduleEndCol}>
-              <View style={[styles.moduleCountBadge, { backgroundColor: '#ECFDF5' }]}>
-                <Text style={[styles.moduleCountText, { color: '#065F46' }]}>
-                  {orders.length}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-            </View>
-          </TouchableOpacity>
-
-          {/* Fila 4: Hoja de Carga */}
-          <TouchableOpacity
-            style={styles.moduleRowCard}
-            onPress={() => navigation.navigate('RouteSummaryModalOrScreen')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.moduleIconBox, { backgroundColor: '#F3E8FF', borderColor: '#DDD6FE' }]}>
-              <Text style={styles.moduleEmoji}>🚚</Text>
-            </View>
-
-            <View style={styles.moduleTextCol}>
-              <Text style={styles.moduleTitle}>Hoja de Carga del Vehículo</Text>
-              <Text style={styles.moduleSubtitle}>
-                Consolidado de mercadería para cargar la unidad 📋
-              </Text>
-            </View>
-
-            <View style={styles.moduleEndCol}>
-              <View style={[styles.moduleCountBadge, { backgroundColor: '#F3E8FF' }]}>
-                <Text style={[styles.moduleCountText, { color: '#7C3AED' }]}>
-                  Carga
-                </Text>
-              </View>
+            <View style={styles.moduleEndBox}>
               <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
             </View>
           </TouchableOpacity>
         </View>
-
-        {/* =================================================================== */}
-        {/* BOTÓN INFERIOR: VACIAR PEDIDOS DE LA JORNADA */}
-        {/* =================================================================== */}
-        {orders.length > 0 && (
-          <TouchableOpacity
-            style={styles.clearOrdersButton}
-            onPress={handleClearAll}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="trash-outline" size={15} color={COLORS.danger} />
-            <Text style={styles.clearOrdersText}>
-              Vaciar pedidos de la jornada actual
-            </Text>
-          </TouchableOpacity>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -415,12 +304,10 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 40,
   },
-  /* Cabecera Superior */
   topHeader: {
     backgroundColor: COLORS.surface,
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
@@ -430,22 +317,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   logoBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.md,
     backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: '#BFDBFE',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  logoEmoji: {
-    fontSize: 26,
   },
   brandTextCol: {
     flex: 1,
@@ -456,10 +335,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   appName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: COLORS.secondary,
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
   onlineBadge: {
     flexDirection: 'row',
@@ -467,7 +346,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ECFDF5',
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 12,
+    borderRadius: RADIUS.full,
     gap: 4,
     borderWidth: 1,
     borderColor: '#A7F3D0',
@@ -489,180 +368,114 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: '500',
   },
-  metricsPillsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    marginTop: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    justifyContent: 'space-around',
-  },
-  metricPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 6,
-  },
-  pillEmoji: {
-    fontSize: 15,
-  },
-  metricPillNumber: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  metricPillLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-  },
-  metricPillDivider: {
-    width: 1,
-    height: 16,
-    backgroundColor: '#CBD5E1',
-  },
-  /* Tarjeta de Métricas Operativas */
-  statsCard: {
-    backgroundColor: COLORS.surface,
-    marginHorizontal: 16,
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginTop: 16,
-    elevation: 2,
+  /* Hero de Ruta Activa */
+  activeRouteHeroCard: {
+    backgroundColor: COLORS.secondary,
+    marginHorizontal: SPACING.lg,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    marginTop: SPACING.lg,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
     shadowRadius: 6,
   },
-  statsHeader: {
+  activeHeroTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  statsTitleRow: {
+  activeHeroBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-  },
-  headerIconEmoji: {
-    fontSize: 16,
-  },
-  statsTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.secondary,
-  },
-  effectivityPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ECFDF5',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
     gap: 4,
   },
-  effectivityText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#065F46',
-  },
-  statsValuesGrid: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  statCol: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statLargeNumber: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  statSubRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    marginTop: 2,
-  },
-  statMiniEmoji: {
-    fontSize: 11,
-  },
-  statLabelText: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-  },
-  statColDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: '#F1F5F9',
-  },
-  revenueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 12,
-  },
-  revenueCaption: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-  },
-  revenueAmount: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    marginTop: 2,
-  },
-  pendingCollectionBox: {
-    alignItems: 'flex-end',
-  },
-  pendingCollectionLabel: {
+  activeHeroBadgeText: {
     fontSize: 10,
-    color: COLORS.textMuted,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  activeHeroProgress: {
+    fontSize: 11,
+    color: '#94A3B8',
     fontWeight: '600',
   },
-  pendingCollectionValue: {
+  activeHeroTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  activeHeroDesc: {
+    fontSize: 13,
+    color: '#CBD5E1',
+    marginTop: 4,
+    marginBottom: 14,
+  },
+  activeHeroButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  heroButtonPrimary: {
+    flex: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    borderRadius: RADIUS.md,
+    gap: 6,
+  },
+  heroButtonPrimaryText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  heroButtonSecondary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    paddingVertical: 12,
+    borderRadius: RADIUS.md,
+    gap: 6,
+  },
+  heroButtonSecondaryText: {
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
-    color: COLORS.primary,
-    marginTop: 1,
   },
   emptyWelcomeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
-    borderRadius: 16,
-    padding: 14,
-    marginTop: 16,
+    backgroundColor: '#F0F7FF',
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.lg,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
     borderWidth: 1,
     borderColor: '#BFDBFE',
-    backgroundColor: '#F0F7FF',
     gap: 12,
   },
   emptyIconCircle: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 22,
     backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyCardTitle: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     color: COLORS.primary,
   },
   emptyCardDesc: {
@@ -671,179 +484,118 @@ const styles = StyleSheet.create({
     marginTop: 2,
     lineHeight: 16,
   },
-  /* Títulos de Sección */
-  sectionTitleWrapper: {
+  /* Botón Nuevo Pedido */
+  newOrderActionCard: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.md,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.primaryLight,
+    gap: 12,
+    elevation: 2,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+  },
+  newOrderIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newOrderTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  newOrderSubtitle: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 1,
+  },
+  /* KPIs de Hoy */
+  sectionHeaderRow: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    marginTop: 22,
-    marginBottom: 10,
+    alignItems: 'center',
+    paddingHorizontal: SPACING.xl,
+    marginTop: SPACING.xl,
+    marginBottom: SPACING.sm,
   },
   sectionHeaderTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#64748B',
+    color: COLORS.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
-  sectionHeaderSubtitle: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    fontWeight: '600',
+  clearLinkText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.danger,
   },
-  /* Acciones Rápidas */
-  actionsContainer: {
-    paddingHorizontal: 16,
-    gap: 10,
-  },
-  heroButton: {
+  kpiGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    borderRadius: 16,
-    padding: 16,
-    gap: 14,
-    elevation: 4,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
+    paddingHorizontal: SPACING.lg,
+    gap: 8,
   },
-  heroIconCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroEmoji: {
-    fontSize: 22,
-    fontWeight: '800',
-  },
-  heroTextCol: {
+  kpiCard: {
     flex: 1,
-  },
-  heroBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  heroTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: COLORS.textInverse,
-  },
-  heroTag: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
-  heroTagText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: COLORS.textInverse,
-    textTransform: 'uppercase',
-  },
-  heroSubtitle: {
-    fontSize: 11,
-    color: '#DBEAFE',
-    marginTop: 2,
-    lineHeight: 15,
-  },
-  mapActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 14,
-    gap: 12,
+    borderRadius: RADIUS.md,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
   },
-  mapIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#EFF6FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-  },
-  mapActionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+  kpiNumber: {
+    fontSize: 16,
+    fontWeight: '900',
     color: COLORS.textPrimary,
   },
-  mapActionSubtitle: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    marginTop: 1,
+  kpiLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginTop: 2,
+    textAlign: 'center',
   },
-  mapActionEnd: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  activeRoutePill: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-  },
-  activeRouteText: {
-    color: COLORS.textInverse,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  /* Filas Rectangulares de Gestión Operativa */
+  /* Módulos */
   modulesContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACING.lg,
     gap: 10,
   },
   moduleRowCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
     borderWidth: 1,
     borderColor: COLORS.border,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
     gap: 12,
   },
   moduleIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-  },
-  moduleEmoji: {
-    fontSize: 22,
   },
   moduleTextCol: {
     flex: 1,
   },
   moduleTitle: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     color: COLORS.textPrimary,
   },
   moduleSubtitle: {
@@ -852,32 +604,18 @@ const styles = StyleSheet.create({
     marginTop: 2,
     lineHeight: 15,
   },
-  moduleEndCol: {
+  moduleEndBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
   moduleCountBadge: {
+    backgroundColor: '#EFF6FF',
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: '800',
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 8,
-  },
-  moduleCountText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  /* Botón de Vaciar */
-  clearOrdersButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    gap: 6,
-    marginTop: 16,
-  },
-  clearOrdersText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.danger,
+    borderRadius: RADIUS.sm,
   },
 });

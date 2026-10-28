@@ -25,6 +25,7 @@ import { COLORS } from '../utils/constants';
 import { formatCurrency } from '../utils/formatters';
 import { Header } from '../components/common/Header';
 import { CustomButton } from '../components/common/CustomButton';
+import { hapticImpact, hapticNotification, hapticSelection } from '../utils/haptics';
 
 type Props = NativeStackScreenProps<
   RootStackParamList,
@@ -47,6 +48,33 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
       }
     });
     return Object.entries(counts).sort((a, b) => b[1].total - a[1].total);
+  }, [orders]);
+
+  // Total de envases retornables devueltos a bordo
+  const totalReturnedContainers = useMemo(() => {
+    return orders.reduce((acc, o) => acc + (o.returnedContainers || 0), 0);
+  }, [orders]);
+
+  // Estimación de peso total de carga física en kg (para no exceder capacidad del vehículo)
+  const estimatedPayloadKg = useMemo(() => {
+    let weight = 0;
+    orders.forEach((o) => {
+      if (o.status !== 'CANCELLED') {
+        o.items.forEach((item) => {
+          const name = item.name.toLowerCase();
+          const qty = item.quantity;
+          if (name.includes('20l')) weight += qty * 20;
+          else if (name.includes('7l')) weight += qty * 7;
+          else if (name.includes('10kg') || name.includes('10k')) weight += qty * 15;
+          else if (name.includes('45kg') || name.includes('45k')) weight += qty * 65;
+          else if (name.includes('50kg')) weight += qty * 50;
+          else if (name.includes('15kg')) weight += qty * 15;
+          else if (name.includes('4l')) weight += qty * 4.5;
+          else weight += qty * 2;
+        });
+      }
+    });
+    return Math.round(weight);
   }, [orders]);
 
   // Cash and Digital Collections Breakdown
@@ -208,6 +236,25 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
               );
             })}
+          </View>
+
+          {/* Peso estimado y envases retornables */}
+          <View style={styles.loadSummaryExtraRow}>
+            <View style={styles.weightBadge}>
+              <Ionicons name="scale-outline" size={15} color="#0284C7" />
+              <Text style={styles.weightBadgeText}>
+                Peso Estimado: ~{estimatedPayloadKg} kg a bordo
+              </Text>
+            </View>
+
+            {totalReturnedContainers > 0 && (
+              <View style={styles.returnedBadge}>
+                <Ionicons name="repeat-outline" size={15} color="#059669" />
+                <Text style={styles.returnedBadgeText}>
+                  {totalReturnedContainers} envases vacíos recuperados
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -591,5 +638,40 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     marginTop: 4,
+  },
+  loadSummaryExtraRow: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    gap: 6,
+  },
+  weightBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 6,
+  },
+  weightBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0284C7',
+  },
+  returnedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 6,
+  },
+  returnedBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#059669',
   },
 });

@@ -26,6 +26,8 @@ import { Header } from '../components/common/Header';
 import { CustomInput } from '../components/common/CustomInput';
 import { CustomButton } from '../components/common/CustomButton';
 import { LocationPickerModal } from '../components/common/LocationPickerModal';
+import { geocodeAddress } from '../services/geocodingService';
+import { hapticImpact, hapticNotification, hapticSelection } from '../utils/haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CustomerFormScreen'>;
 
@@ -76,7 +78,7 @@ export const CustomerFormScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
-  // Geolocalizar dirección con OpenStreetMap
+  // Geolocalizar dirección con servicio centralizado
   const handleGeocodeAddress = async () => {
     if (!deliveryAddress.trim() && !district.trim()) {
       Alert.alert(
@@ -87,51 +89,25 @@ export const CustomerFormScreen: React.FC<Props> = ({ route, navigation }) => {
     }
 
     setIsGettingGps(true);
-    try {
-      const query = `${deliveryAddress}, ${district}`;
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
-      const response = await fetch(url, {
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'GestorRutasMobile/1.0',
-        },
-      });
+    const result = await geocodeAddress(deliveryAddress, district);
+    setIsGettingGps(false);
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.length > 0) {
-          const lat = parseFloat(data[0].lat);
-          const lon = parseFloat(data[0].lon);
-          setLatitude(lat);
-          setLongitude(lon);
-          Alert.alert(
-            'Ubicación Fijada',
-            `Coordenadas obtenidas: ${lat.toFixed(4)}, ${lon.toFixed(4)}`
-          );
-          setIsGettingGps(false);
-          return;
-        }
-      }
-
-      // Si no encuentra coincidencia en la red, intentar por distrito predeterminado
-      if (DISTRICT_COORDINATES[district]) {
-        const coords = DISTRICT_COORDINATES[district];
-        setLatitude(coords.latitude);
-        setLongitude(coords.longitude);
-        Alert.alert(
-          'Ubicación Aproximada',
-          `Se fijaron las coordenadas base para el distrito de ${district}. Puedes ajustarlas en el mapa interactivo.`
-        );
-      } else {
-        Alert.alert(
-          'Sin Coordenadas Exactas',
-          'No se encontró la dirección exacta en el mapa. Puedes fijar el pin directamente en el mapa interactivo.'
-        );
-      }
-    } catch {
-      Alert.alert('Aviso', 'No se pudo conectar al servicio de mapas.');
-    } finally {
-      setIsGettingGps(false);
+    if (result) {
+      setLatitude(result.latitude);
+      setLongitude(result.longitude);
+      hapticNotification('success');
+      Alert.alert(
+        'Ubicación Fijada',
+        result.isExact
+          ? `Coordenadas obtenidas: ${result.latitude.toFixed(4)}, ${result.longitude.toFixed(4)}`
+          : `Se fijaron las coordenadas del distrito de ${district}. Puedes afinarlas en el mapa interactivo.`
+      );
+    } else {
+      hapticNotification('warning');
+      Alert.alert(
+        'Sin Coordenadas Exactas',
+        'No se encontró la dirección exacta. Puedes fijar el pin directamente en el mapa interactivo.'
+      );
     }
   };
 

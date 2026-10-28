@@ -22,6 +22,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT, Region } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../utils/constants';
+import { geocodeAddress } from '../../services/geocodingService';
+import { hapticImpact, hapticNotification, hapticSelection } from '../../utils/haptics';
 
 const { width, height } = Dimensions.get('window');
 
@@ -94,7 +96,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     setSelectedCoord({ latitude, longitude });
   };
 
-  // Buscar dirección con geocodificación libre
+  // Buscar dirección con servicio centralizado
   const handleSearchAddress = async () => {
     if (!searchQuery.trim()) {
       Alert.alert('Buscar dirección', 'Escribe una dirección o distrito para buscar.');
@@ -102,49 +104,27 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     }
 
     setIsSearching(true);
-    try {
-      const query = searchQuery.trim();
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-        query
-      )}&limit=1`;
+    const result = await geocodeAddress(searchQuery.trim(), '');
+    setIsSearching(false);
 
-      const response = await fetch(url, {
-        headers: {
-          Accept: 'application/json',
-          'User-Agent': 'GestorRutasMobile/1.0',
+    if (result) {
+      setSelectedCoord({ latitude: result.latitude, longitude: result.longitude });
+      mapRef.current?.animateToRegion(
+        {
+          latitude: result.latitude,
+          longitude: result.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
         },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.length > 0) {
-          const lat = parseFloat(data[0].lat);
-          const lon = parseFloat(data[0].lon);
-          setSelectedCoord({ latitude: lat, longitude: lon });
-          mapRef.current?.animateToRegion(
-            {
-              latitude: lat,
-              longitude: lon,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
-            },
-            600
-          );
-          setIsSearching(false);
-          return;
-        }
-      }
+        600
+      );
+      hapticNotification('success');
+    } else {
+      hapticNotification('warning');
       Alert.alert(
         'Dirección no encontrada',
         'No se hallaron coordenadas automáticas. Puedes navegar en el mapa y tocar directamente para colocar el pin.'
       );
-    } catch {
-      Alert.alert(
-        'Aviso',
-        'No se pudo conectar a la búsqueda en línea. Coloca el pin tocando en el mapa.'
-      );
-    } finally {
-      setIsSearching(false);
     }
   };
 

@@ -50,6 +50,11 @@ export interface Order {
   driverAssigned?: string;
   latitude?: number;
   longitude?: number;
+  amountPaid?: number; // Monto entregado por el cliente para pagar en efectivo
+  changeDue?: number;  // Vuelto a entregar calculado
+  returnedContainers?: number; // Envases vacíos recuperados (bidones, balones)
+  deliveredContainers?: number; // Envases llenos entregados
+  deliveryNotes?: string; // Observaciones de entrega o recepción
   createdAt: string; // ISO 8601 string
   deliveredAt?: string;
 }

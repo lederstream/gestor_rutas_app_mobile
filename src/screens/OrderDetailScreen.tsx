@@ -16,6 +16,7 @@ import {
   StatusBar,
   Linking,
   Platform,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -23,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useOrders } from '../context/OrderContext';
 import { OrderStatus } from '../models/Order';
+import { hapticImpact, hapticNotification, hapticSelection } from '../utils/haptics';
 import {
   COLORS,
   CATEGORY_CONFIG,
@@ -42,9 +44,32 @@ type Props = NativeStackScreenProps<RootStackParamList, 'OrderDetailScreen'>;
 
 export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { orderId } = route.params;
-  const { getOrderById, updateOrderStatus, deleteOrder } = useOrders();
+  const { getOrderById, updateOrderStatus, updateOrder, deleteOrder } = useOrders();
 
   const order = getOrderById(orderId);
+
+  const handleUpdateReturnedContainers = (delta: number) => {
+    if (!order) return;
+    hapticSelection();
+    const current = order.returnedContainers || 0;
+    const next = Math.max(0, current + delta);
+    updateOrder({
+      ...order,
+      returnedContainers: next,
+    });
+  };
+
+  const handleUpdateCashPaid = (text: string) => {
+    if (!order) return;
+    const num = parseFloat(text);
+    const paid = isNaN(num) ? undefined : num;
+    const change = paid && paid > order.totalAmount ? paid - order.totalAmount : undefined;
+    updateOrder({
+      ...order,
+      amountPaid: paid,
+      changeDue: change,
+    });
+  };
 
   if (!order) {
     return (
@@ -396,6 +421,61 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={styles.grandTotalText}>
               {formatCurrency(order.totalAmount)}
             </Text>
+          </View>
+
+          {/* Arqueo de vuelto para pagos en efectivo */}
+          {order.paymentMethod === 'CASH' && (
+            <View style={styles.cashDetailBox}>
+              <View style={styles.cashDetailHeader}>
+                <Ionicons name="cash-outline" size={16} color="#92400E" />
+                <Text style={styles.cashDetailTitle}>Arqueo de Pago en Efectivo</Text>
+              </View>
+              <View style={styles.cashInputRow}>
+                <Text style={styles.cashInputLabel}>Cliente paga con:</Text>
+                <TextInput
+                  style={styles.cashInputSmall}
+                  placeholder="Ej. 100"
+                  defaultValue={order.amountPaid ? String(order.amountPaid) : ''}
+                  onChangeText={handleUpdateCashPaid}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              {order.changeDue !== undefined && order.changeDue > 0 ? (
+                <View style={styles.changeRow}>
+                  <Text style={styles.changeLabel}>Vuelto a Devolver:</Text>
+                  <Text style={styles.changeValue}>{formatCurrency(order.changeDue)}</Text>
+                </View>
+              ) : null}
+            </View>
+          )}
+        </View>
+
+        {/* Control de Envases Retornables (Bidones / Balones) */}
+        <View style={styles.card}>
+          <Text style={styles.cardHeaderTitle}>Control de Envases Retornables</Text>
+          <Text style={styles.containerDesc}>
+            Control de envases vacíos recuperados del cliente (garantías y préstamos):
+          </Text>
+          <View style={styles.containerCounterRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.containerLabel}>Envases Recuperados:</Text>
+              <Text style={styles.containerSub}>Balones o bidones vacíos que suben al vehículo</Text>
+            </View>
+            <View style={styles.counterControlGroup}>
+              <TouchableOpacity
+                style={styles.counterBtnSmall}
+                onPress={() => handleUpdateReturnedContainers(-1)}
+              >
+                <Ionicons name="remove" size={16} color={COLORS.textPrimary} />
+              </TouchableOpacity>
+              <Text style={styles.counterQtyTextLarge}>{order.returnedContainers || 0}</Text>
+              <TouchableOpacity
+                style={styles.counterBtnSmall}
+                onPress={() => handleUpdateReturnedContainers(1)}
+              >
+                <Ionicons name="add" size={16} color={COLORS.textPrimary} />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -858,4 +938,114 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
+  cashDetailBox: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  cashDetailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  cashDetailTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#92400E',
+    textTransform: 'uppercase',
+  },
+  cashInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  cashInputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  cashInputSmall: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#78350F',
+    width: 100,
+    textAlign: 'center',
+  },
+  changeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#FDE68A',
+  },
+  changeLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  changeValue: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: COLORS.success,
+  },
+  containerDesc: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginBottom: 12,
+    lineHeight: 16,
+  },
+  containerCounterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  containerLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  containerSub: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  counterControlGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  counterBtnSmall: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  counterQtyTextLarge: {
+    fontSize: 15,
+    fontWeight: '800',
+    paddingHorizontal: 10,
+    color: COLORS.textPrimary,
+  },
 });
+

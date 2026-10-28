@@ -28,6 +28,8 @@ import { COLORS } from '../utils/constants';
 import { formatCurrency } from '../utils/formatters';
 import { PriorityBadge } from '../components/orders/PriorityBadge';
 import { getDynamicPriority } from '../utils/priorityHelper';
+import { optimizeRouteOrder } from '../utils/routeOptimizer';
+import { hapticImpact, hapticNotification, hapticSelection } from '../utils/haptics';
 
 const { width } = Dimensions.get('window');
 
@@ -49,28 +51,44 @@ export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
   // Filtro de estado
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
 
+  // Modo de optimización inteligente de paradas
+  const [isRouteOptimized, setIsRouteOptimized] = useState(false);
+
   // Pedido seleccionado para preview
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
-  // Órdenes mapeadas con coordenadas válidas
-  const mappedOrders = useMemo(() => {
-    return orders
-      .filter((o) => {
-        if (statusFilter !== 'ALL' && o.status !== statusFilter) return false;
-        // Solo considerar los que tengan coordenadas
-        return typeof o.latitude === 'number' && typeof o.longitude === 'number';
-      })
-      .map((order, index) => {
-        const dynamicInfo = getDynamicPriority(order);
-        return {
+  // Órdenes mapeadas con coordenadas válidas y secuencia calculada
+  const { mappedOrders, totalDistanceKm } = useMemo(() => {
+    const valid = orders.filter((o) => {
+      if (statusFilter !== 'ALL' && o.status !== statusFilter) return false;
+      return typeof o.latitude === 'number' && typeof o.longitude === 'number';
+    });
+
+    if (isRouteOptimized && valid.length > 1) {
+      const { optimizedOrders, totalDistanceKm: distance } = optimizeRouteOrder(valid);
+      return {
+        mappedOrders: optimizedOrders.map((order) => ({
           ...order,
           latitude: order.latitude as number,
           longitude: order.longitude as number,
-          stopIndex: index + 1,
-          dynamicInfo,
-        };
-      });
-  }, [orders, statusFilter]);
+          stopIndex: order.stopNumber,
+          dynamicInfo: getDynamicPriority(order),
+        })),
+        totalDistanceKm: distance,
+      };
+    }
+
+    return {
+      mappedOrders: valid.map((order, index) => ({
+        ...order,
+        latitude: order.latitude as number,
+        longitude: order.longitude as number,
+        stopIndex: index + 1,
+        dynamicInfo: getDynamicPriority(order),
+      })),
+      totalDistanceKm: 0,
+    };
+  }, [orders, statusFilter, isRouteOptimized]);
 
   // Pedido activo en la tarjeta flotante inferior
   const activeOrder = useMemo(() => {
@@ -268,18 +286,49 @@ export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
           )}
         </View>
 
-        {/* Botón de ajuste total a 1 solo vistazo */}
+        {/* Botón de Optimización de Secuencia y Ajuste de Vista */}
         {mappedOrders.length > 1 && (
-          <TouchableOpacity
-            style={styles.fitAllButton}
-            onPress={handleFitAllPins}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="scan-outline" size={14} color="#0284C7" />
-            <Text style={styles.fitAllButtonText}>
-              Ver todas las paradas en un solo vistazo
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.actionRowOptimization}>
+            <TouchableOpacity
+              style={[
+                styles.optimizeRouteButton,
+                isRouteOptimized && styles.optimizeRouteButtonActive,
+              ]}
+              onPress={() => {
+                hapticImpact('medium');
+                setIsRouteOptimized(!isRouteOptimized);
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="flash"
+                size={14}
+                color={isRouteOptimized ? '#FFFFFF' : '#D97706'}
+              />
+              <Text
+                style={[
+                  styles.optimizeRouteButtonText,
+                  isRouteOptimized && { color: '#FFFFFF' },
+                ]}
+              >
+                {isRouteOptimized
+                  ? `⚡ Paradas Optimizadas (~${totalDistanceKm} km)`
+                  : '⚡ Optimizar Secuencia'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.fitAllButtonCompact}
+              onPress={() => {
+                hapticSelection();
+                handleFitAllPins();
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="scan-outline" size={14} color="#0284C7" />
+              <Text style={styles.fitAllButtonText}>Ajustar Vista</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 
@@ -314,7 +363,11 @@ export const MapRouteScreen: React.FC<Props> = ({ navigation }) => {
               }}
               title={order.customerName}
               description={`${order.deliveryAddress} (${order.district}) - ${order.dynamicInfo.timeLabel}`}
-              onPress={() => setSelectedOrder(order)}
+              onPress={() => {
+                hapticSelection();
+                setSelectedOrder(order);
+              }}
+              tracksViewChanges={false}
             >
               <View
                 style={[
@@ -571,7 +624,35 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
-  fitAllButton: {
+  actionRowOptimization: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  optimizeRouteButton: {
+    flex: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 8,
+    paddingVertical: 7,
+    gap: 5,
+  },
+  optimizeRouteButtonActive: {
+    backgroundColor: '#D97706',
+    borderColor: '#B45309',
+  },
+  optimizeRouteButtonText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  fitAllButtonCompact: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -579,9 +660,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#BAE6FD',
     borderRadius: 8,
-    paddingVertical: 6,
-    gap: 6,
-    marginTop: 8,
+    paddingVertical: 7,
+    gap: 4,
   },
   fitAllButtonText: {
     fontSize: 11,
