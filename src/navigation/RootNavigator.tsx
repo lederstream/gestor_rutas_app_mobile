@@ -1,8 +1,8 @@
 /**
  * ============================================================================
  * NAVIGATION: RootNavigator.tsx
- * Type-safe React Navigation Stack con soporte para Autenticación y Roles
- * (Distribuidor / Conductor vs Cliente Final)
+ * Type-safe React Navigation Stack con soporte para Autenticación y Roles (RBAC)
+ * Implementa Flujo de Autenticación Condicional Estricto según Estándares de React Navigation
  * ============================================================================
  */
 
@@ -59,6 +59,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export const RootNavigator: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
 
+  // 1. PANTALLA DE CARGA DE SESIÓN
   if (isLoading) {
     return (
       <View
@@ -74,63 +75,56 @@ export const RootNavigator: React.FC = () => {
     );
   }
 
-  const initialRoute: keyof RootStackParamList = !isAuthenticated
-    ? 'LoginScreen'
-    : user?.role === 'CLIENT'
-    ? 'ClientHomeScreen'
-    : 'WelcomeScreen';
+  // 2. FLUJO NO AUTENTICADO (GUEST / LOGIN)
+  // Al no estar autenticado, el único screen que existe en el árbol de React es LoginScreen.
+  // Es físicamente imposible que el usuario quede atrapado en WelcomeScreen al cerrar sesión.
+  if (!isAuthenticated || !user) {
+    return (
+      <NavigationContainer key="guest-navigation-container">
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            animation: 'fade',
+          }}
+        >
+          <Stack.Screen name="LoginScreen" component={LoginScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    );
+  }
 
+  // 3. FLUJO CLIENTE FINAL (PORTAL EXCLUSIVO CLIENTE)
+  if (user.role === 'CLIENT') {
+    return (
+      <NavigationContainer key={`client-navigation-container-${user.id}`}>
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right',
+          }}
+        >
+          <Stack.Screen name="ClientHomeScreen" component={ClientHomeScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    );
+  }
+
+  // 4. FLUJO DISTRIBUIDOR Y ADMINISTRADOR (PANEL OPERATIVO Y RUTAS)
   return (
-    <NavigationContainer>
+    <NavigationContainer key={`operator-navigation-container-${user.id}-${user.role}`}>
       <Stack.Navigator
-        key={user ? `${user.id}-${user.role}` : 'guest'}
-        initialRouteName={initialRoute}
+        initialRouteName="WelcomeScreen"
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right',
         }}
       >
-        <Stack.Screen
-          name="LoginScreen"
-          component={LoginScreen}
-          options={{
-            animation: 'fade',
-          }}
-        />
-        <Stack.Screen
-          name="ClientHomeScreen"
-          component={ClientHomeScreen}
-          options={{
-            animation: 'fade',
-          }}
-        />
-        <Stack.Screen
-          name="WelcomeScreen"
-          component={WelcomeScreen}
-          options={{
-            animation: 'fade',
-          }}
-        />
-        <Stack.Screen
-          name="CustomerListScreen"
-          component={CustomerListScreen}
-        />
-        <Stack.Screen
-          name="CustomerFormScreen"
-          component={CustomerFormScreen}
-        />
-        <Stack.Screen
-          name="ProductListScreen"
-          component={ProductListScreen}
-        />
-        <Stack.Screen
-          name="ProductFormScreen"
-          component={ProductFormScreen}
-        />
-        <Stack.Screen
-          name="OrderListScreen"
-          component={OrderListScreen}
-        />
+        <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} />
+        <Stack.Screen name="CustomerListScreen" component={CustomerListScreen} />
+        <Stack.Screen name="CustomerFormScreen" component={CustomerFormScreen} />
+        <Stack.Screen name="ProductListScreen" component={ProductListScreen} />
+        <Stack.Screen name="ProductFormScreen" component={ProductFormScreen} />
+        <Stack.Screen name="OrderListScreen" component={OrderListScreen} />
         <Stack.Screen
           name="CreateOrderScreen"
           component={CreateOrderScreen}
@@ -138,10 +132,7 @@ export const RootNavigator: React.FC = () => {
             animation: 'slide_from_bottom',
           }}
         />
-        <Stack.Screen
-          name="OrderDetailScreen"
-          component={OrderDetailScreen}
-        />
+        <Stack.Screen name="OrderDetailScreen" component={OrderDetailScreen} />
         <Stack.Screen
           name="RouteSummaryModalOrScreen"
           component={RouteSummaryModalOrScreen}
