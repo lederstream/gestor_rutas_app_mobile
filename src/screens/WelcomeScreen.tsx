@@ -202,10 +202,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             <Ionicons name="add" size={24} color="#FFFFFF" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.newOrderTitle}>Generar Nuevo Pedido</Text>
-            <Text style={styles.newOrderSubtitle}>
-              Asistente rápido en 3 pasos con autocompletado
-            </Text>
+            <Text style={styles.newOrderTitle}>Generar Pedido</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
         </TouchableOpacity>
@@ -272,9 +269,6 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             </View>
             <View style={styles.moduleTextCol}>
               <Text style={styles.moduleTitle}>Mis Clientes</Text>
-              <Text style={styles.moduleSubtitle}>
-                Directorio con WhatsApp y puntos GPS fijados
-              </Text>
             </View>
             <View style={styles.moduleEndBox}>
               <Text style={styles.moduleCountBadge}>{customers.length}</Text>
@@ -296,9 +290,6 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             </View>
             <View style={styles.moduleTextCol}>
               <Text style={styles.moduleTitle}>Catálogo de Productos</Text>
-              <Text style={styles.moduleSubtitle}>
-                Precios y unidades de venta para carga
-              </Text>
             </View>
             <View style={styles.moduleEndBox}>
               <Text style={[styles.moduleCountBadge, { color: '#B45309', backgroundColor: '#FEF3C7' }]}>
@@ -321,10 +312,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
               <Ionicons name="clipboard" size={22} color="#7C3AED" />
             </View>
             <View style={styles.moduleTextCol}>
-              <Text style={styles.moduleTitle}>Manifiesto y Carga</Text>
-              <Text style={styles.moduleSubtitle}>
-                Consolidado en bodega móvil y arqueo de caja
-              </Text>
+              <Text style={styles.moduleTitle}>Manifiesto de Carga</Text>
             </View>
             <View style={styles.moduleEndBox}>
               <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />

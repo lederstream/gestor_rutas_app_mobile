@@ -23,7 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useCustomers } from '../context/CustomerContext';
 import { useOrders } from '../context/OrderContext';
-import { Customer } from '../models/Customer';
+import { Customer, isB2BCustomer } from '../models/Customer';
 import { COLORS } from '../utils/constants';
 import { Header } from '../components/common/Header';
 
@@ -101,23 +101,24 @@ export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
   const renderCustomerItem = ({ item }: { item: Customer }) => {
     const orderCount = getOrderCountForCustomer(item.name, item.id);
     const hasGps = Boolean(item.latitude && item.longitude);
+    const isB2B = isB2BCustomer(item);
 
     return (
       <View style={styles.card}>
         {/* Cabecera de la tarjeta */}
         <View style={styles.cardHeader}>
-          <View style={styles.avatar}>
-            <Text style={{ fontSize: 22 }}>
-              {item.name.toLowerCase().includes('restaurante')
-                ? '🍽️'
-                : item.name.toLowerCase().includes('panader')
-                ? '🥖'
-                : item.name.toLowerCase().includes('bodega')
-                ? '🏪'
-                : item.name.toLowerCase().includes('lavander')
-                ? '🫧'
-                : '👤'}
-            </Text>
+          {/* Avatar Binario: Negocio (B2B) vs Persona/Usuario (B2C) */}
+          <View
+            style={[
+              styles.avatar,
+              isB2B ? styles.avatarB2B : styles.avatarB2C,
+            ]}
+          >
+            <Ionicons
+              name={isB2B ? 'storefront' : 'person'}
+              size={22}
+              color={isB2B ? '#2563EB' : '#059669'}
+            />
           </View>
 
           <View style={styles.headerInfo}>
@@ -125,6 +126,28 @@ export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
               {item.name}
             </Text>
             <View style={styles.tagRow}>
+              {/* Badge Identificador B2B / B2C */}
+              <View
+                style={[
+                  styles.segmentBadge,
+                  isB2B ? styles.segmentBadgeB2B : styles.segmentBadgeB2C,
+                ]}
+              >
+                <Ionicons
+                  name={isB2B ? 'business-outline' : 'person-outline'}
+                  size={10}
+                  color={isB2B ? '#1D4ED8' : '#047857'}
+                />
+                <Text
+                  style={[
+                    styles.segmentBadgeText,
+                    isB2B ? styles.segmentBadgeTextB2B : styles.segmentBadgeTextB2C,
+                  ]}
+                >
+                  {isB2B ? 'B2B Negocio' : 'B2C Hogar'}
+                </Text>
+              </View>
+
               <View style={styles.districtBadge}>
                 <Ionicons name="location-sharp" size={11} color={COLORS.primary} />
                 <Text style={styles.districtText}>{item.district}</Text>
@@ -388,16 +411,46 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
+  },
+  avatarB2B: {
+    backgroundColor: '#EFF6FF',
     borderColor: '#BFDBFE',
+  },
+  avatarB2C: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
   },
   avatarText: {
     fontSize: 16,
     fontWeight: '800',
     color: COLORS.primary,
+  },
+  segmentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 3,
+  },
+  segmentBadgeB2B: {
+    backgroundColor: '#DBEAFE',
+  },
+  segmentBadgeB2C: {
+    backgroundColor: '#D1FAE5',
+  },
+  segmentBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  segmentBadgeTextB2B: {
+    color: '#1D4ED8',
+  },
+  segmentBadgeTextB2C: {
+    color: '#047857',
   },
   headerInfo: {
     flex: 1,

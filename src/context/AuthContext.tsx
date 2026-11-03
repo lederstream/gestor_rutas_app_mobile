@@ -17,8 +17,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, UserRole, UserAccount, REGISTERED_ACCOUNTS } from '../models/User';
 import { hapticImpact, hapticNotification } from '../utils/haptics';
 
-const AUTH_STORAGE_KEY = '@gestor_rutas_auth_user_v2';
-const ACCOUNTS_STORAGE_KEY = '@gestor_rutas_accounts_v2';
+const AUTH_STORAGE_KEY = '@gestor_rutas_auth_user_v3_tacna';
+const ACCOUNTS_STORAGE_KEY = '@gestor_rutas_accounts_v3_tacna';
 
 export interface AuthContextType {
   user: User | null;

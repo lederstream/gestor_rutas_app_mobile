@@ -15,12 +15,16 @@ import {
   Alert,
   StatusBar,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useCustomers } from '../context/CustomerContext';
+import { useOrders } from '../context/OrderContext';
+import { CustomerType, isB2BCustomer } from '../models/Customer';
 import { COLORS, AVAILABLE_DISTRICTS, DISTRICT_COORDINATES } from '../utils/constants';
 import { Header } from '../components/common/Header';
 import { CustomInput } from '../components/common/CustomInput';
@@ -35,12 +39,14 @@ export const CustomerFormScreen: React.FC<Props> = ({ route, navigation }) => {
   const customerId = route.params?.customerId;
   const isEditing = Boolean(customerId);
   const { addCustomer, updateCustomer, getCustomerById } = useCustomers();
+  const { orders, updateOrderLocation } = useOrders();
 
   // Estados del formulario
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [district, setDistrict] = useState('');
+  const [customerType, setCustomerType] = useState<CustomerType>('B2B');
   const [addressReference, setAddressReference] = useState('');
   const [notes, setNotes] = useState('');
   const [latitude, setLatitude] = useState<number | undefined>(undefined);
@@ -60,6 +66,7 @@ export const CustomerFormScreen: React.FC<Props> = ({ route, navigation }) => {
         setPhone(existing.phone);
         setDeliveryAddress(existing.deliveryAddress);
         setDistrict(existing.district);
+        setCustomerType(existing.customerType || (isB2BCustomer(existing) ? 'B2B' : 'B2C'));
         setAddressReference(existing.addressReference || '');
         setNotes(existing.notes || '');
         setLatitude(existing.latitude);
@@ -150,12 +157,26 @@ export const CustomerFormScreen: React.FC<Props> = ({ route, navigation }) => {
           phone: phone.trim(),
           deliveryAddress: deliveryAddress.trim(),
           district: district.trim(),
+          customerType,
           addressReference: addressReference.trim() || undefined,
           notes: notes.trim() || undefined,
           latitude,
           longitude,
         });
-        Alert.alert('Éxito', 'Cliente actualizado correctamente.', [
+
+        // Sincronizar instantáneamente las coordenadas en los pedidos de este cliente
+        if (typeof latitude === 'number' && typeof longitude === 'number') {
+          orders.forEach((o) => {
+            if (
+              o.customerId === customerId ||
+              o.customerName.trim().toLowerCase() === name.trim().toLowerCase()
+            ) {
+              updateOrderLocation(o.id, latitude, longitude);
+            }
+          });
+        }
+
+        Alert.alert('Éxito', 'Cliente y pedidos actualizados con su nueva ubicación.', [
           { text: 'Aceptar', onPress: () => navigation.goBack() },
         ]);
       }
@@ -165,6 +186,7 @@ export const CustomerFormScreen: React.FC<Props> = ({ route, navigation }) => {
         phone: phone.trim(),
         deliveryAddress: deliveryAddress.trim(),
         district: district.trim(),
+        customerType,
         addressReference: addressReference.trim() || undefined,
         notes: notes.trim() || undefined,
         latitude,
@@ -186,15 +208,78 @@ export const CustomerFormScreen: React.FC<Props> = ({ route, navigation }) => {
         onBackPress={() => navigation.goBack()}
       />
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+        >
         {/* Banner de Sección */}
         <View style={styles.sectionHeader}>
           <Ionicons name="person-circle-outline" size={24} color={COLORS.primary} />
           <Text style={styles.sectionTitle}>Datos Principales</Text>
+        </View>
+
+        {/* Selector de Perfil Binario: Negocio (B2B) vs Hogar (B2C) */}
+        <View style={styles.typeSelectorWrapper}>
+          <Text style={styles.typeSelectorLabel}>Perfil de Cliente:</Text>
+          <View style={styles.typeSelectorRow}>
+            <TouchableOpacity
+              style={[
+                styles.typeOptionBtn,
+                customerType === 'B2B' && styles.typeOptionBtnActiveB2B,
+              ]}
+              onPress={() => {
+                setCustomerType('B2B');
+                hapticSelection();
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="storefront"
+                size={18}
+                color={customerType === 'B2B' ? '#1D4ED8' : COLORS.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.typeOptionText,
+                  customerType === 'B2B' && styles.typeOptionTextActiveB2B,
+                ]}
+              >
+                Negocio (B2B)
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.typeOptionBtn,
+                customerType === 'B2C' && styles.typeOptionBtnActiveB2C,
+              ]}
+              onPress={() => {
+                setCustomerType('B2C');
+                hapticSelection();
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="person"
+                size={18}
+                color={customerType === 'B2C' ? '#047857' : COLORS.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.typeOptionText,
+                  customerType === 'B2C' && styles.typeOptionTextActiveB2C,
+                ]}
+              >
+                Hogar (B2C)
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <CustomInput
@@ -203,7 +288,7 @@ export const CustomerFormScreen: React.FC<Props> = ({ route, navigation }) => {
           value={name}
           onChangeText={setName}
           error={errors.name}
-          icon="business-outline"
+          icon={customerType === 'B2B' ? 'business-outline' : 'person-outline'}
         />
 
         <CustomInput
@@ -224,7 +309,7 @@ export const CustomerFormScreen: React.FC<Props> = ({ route, navigation }) => {
 
         <CustomInput
           label="Distrito, Ciudad o Zona *"
-          placeholder="Ej. Miraflores, San Borja, etc."
+          placeholder="Ej. Tacna, Pocollay, Gregorio Albarracín, etc."
           value={district}
           onChangeText={setDistrict}
           error={errors.district}
@@ -360,14 +445,15 @@ export const CustomerFormScreen: React.FC<Props> = ({ route, navigation }) => {
           style={{ marginTop: 20 }}
           fullWidth
         />
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Modal de Mapa Interactivo */}
       <LocationPickerModal
         visible={isMapModalVisible}
         onClose={() => setIsMapModalVisible(false)}
-        initialLatitude={latitude || -12.0984}
-        initialLongitude={longitude || -77.0016}
+        initialLatitude={latitude || -18.0139}
+        initialLongitude={longitude || -70.2519}
         title={`Ubicación de ${name || 'Cliente'}`}
         onSelectLocation={({ latitude: lat, longitude: lng }: { latitude: number; longitude: number }) => {
           setLatitude(lat);
@@ -399,6 +485,52 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.secondary,
+  },
+  typeSelectorWrapper: {
+    marginBottom: 16,
+  },
+  typeSelectorLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.secondary,
+    marginBottom: 8,
+  },
+  typeSelectorRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  typeOptionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    gap: 8,
+  },
+  typeOptionBtnActiveB2B: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#2563EB',
+  },
+  typeOptionBtnActiveB2C: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#059669',
+  },
+  typeOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  typeOptionTextActiveB2B: {
+    color: '#1D4ED8',
+    fontWeight: '800',
+  },
+  typeOptionTextActiveB2C: {
+    color: '#047857',
+    fontWeight: '800',
   },
   chipsContainer: {
     marginBottom: 12,

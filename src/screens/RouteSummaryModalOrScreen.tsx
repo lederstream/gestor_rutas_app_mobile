@@ -355,7 +355,7 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
             fullWidth
           />
           <CustomButton
-            title="Cerrar Jornada Logística"
+            title="Cerrar Turno"
             icon="flag-outline"
             size="lg"
             variant="secondary"

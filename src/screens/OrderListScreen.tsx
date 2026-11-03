@@ -5,7 +5,7 @@
  * ============================================================================
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -43,6 +44,16 @@ export const OrderListScreen: React.FC<Props> = ({ navigation }) => {
   } = useOrders();
 
   const [search, setSearch] = useState(filter.searchQuery);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    hapticImpact('light');
+    setTimeout(() => {
+      setIsRefreshing(false);
+      hapticNotification('success');
+    }, 700);
+  }, []);
 
   const handleSearchChange = (text: string) => {
     setSearch(text);
@@ -197,6 +208,14 @@ export const OrderListScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={renderEmptyList}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
         initialNumToRender={6}
         maxToRenderPerBatch={8}
         windowSize={5}

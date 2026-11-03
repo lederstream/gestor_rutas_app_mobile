@@ -2,8 +2,11 @@
  * ============================================================================
  * DOMAIN MODEL: Customer.ts
  * Entidad Cliente para gestión de libreta de direcciones y pedidos recurrentes
+ * Soporta segmentación binaria: B2B (Negocio/Comercio) y B2C (Hogar/Persona)
  * ============================================================================
  */
+
+export type CustomerType = 'B2B' | 'B2C';
 
 export interface Customer {
   id: string;
@@ -11,6 +14,7 @@ export interface Customer {
   phone: string;             // Teléfono de contacto / WhatsApp
   deliveryAddress: string;   // Dirección principal de entrega
   district: string;          // Ciudad, Distrito o Zona
+  customerType?: CustomerType; // B2B: Negocio / B2C: Hogar o Persona
   addressReference?: string; // Referencia (esquina, color de fachada, interior, etc.)
   notes?: string;            // Notas o instrucciones permanentes para el repartidor
   latitude?: number;         // Coordenada Latitud GPS guardada
@@ -20,55 +24,108 @@ export interface Customer {
 }
 
 /**
- * Clientes iniciales para demostración y puesta en marcha rápida
+ * Determina si un cliente corresponde al segmento B2B (Negocio/Comercio)
+ * o B2C (Hogar / Persona natural).
+ */
+export const isB2BCustomer = (customer: { name?: string; customerType?: CustomerType }): boolean => {
+  if (customer.customerType) {
+    return customer.customerType === 'B2B';
+  }
+  const n = (customer.name || '').toLowerCase();
+  return (
+    n.includes('bodega') ||
+    n.includes('restaurante') ||
+    n.includes('panader') ||
+    n.includes('minimarket') ||
+    n.includes('comercial') ||
+    n.includes('tienda') ||
+    n.includes('empresa') ||
+    n.includes('s.a.c') ||
+    n.includes('eirl') ||
+    n.includes('lavander')
+  );
+};
+
+/**
+ * Clientes iniciales para demostración con diferenciación B2B y B2C
  */
 export const INITIAL_CUSTOMERS: Customer[] = [
   {
     id: 'cust-1',
     name: 'Bodega Don Pepe',
     phone: '987654321',
-    deliveryAddress: 'Av. Javier Prado Este 2450',
-    district: 'San Borja',
-    addressReference: 'Frente al parque, reja negra',
+    deliveryAddress: 'Av. Bolognesi 840',
+    district: 'Tacna (Cercado)',
+    customerType: 'B2B',
+    addressReference: 'Frente al Mercado Central, reja negra',
     notes: 'Recibir pedidos preferentemente por la mañana',
-    latitude: -12.0984,
-    longitude: -77.0016,
+    latitude: -18.0125,
+    longitude: -70.2480,
     createdAt: new Date().toISOString(),
   },
   {
     id: 'cust-2',
-    name: 'Restaurante El Buen Sabor',
+    name: 'Restaurante El Buen Sabor Tacneño',
     phone: '991234567',
-    deliveryAddress: 'Av. Benavides 1820',
-    district: 'Miraflores',
-    addressReference: 'Puerta lateral de descarga',
+    deliveryAddress: 'Av. San Martín 450',
+    district: 'Tacna (Cercado)',
+    customerType: 'B2B',
+    addressReference: 'Cerca al Paseo Cívico, puerta lateral de descarga',
     notes: 'Factura con RUC, solicitar firma de recepción al chef',
-    latitude: -12.1192,
-    longitude: -77.0298,
+    latitude: -18.0145,
+    longitude: -70.2530,
     createdAt: new Date().toISOString(),
   },
   {
     id: 'cust-3',
     name: 'Panadería La Espiga Dorada',
     phone: '978112233',
-    deliveryAddress: 'Av. Primavera 650',
-    district: 'Santiago de Surco',
-    addressReference: 'Al costado de la farmacia',
+    deliveryAddress: 'Av. Municipal 120',
+    district: 'Coronel Gregorio Albarracín',
+    customerType: 'B2B',
+    addressReference: 'Frente a la Plaza Pérez Gamboa',
     notes: 'Descarga en garaje principal',
-    latitude: -12.1355,
-    longitude: -76.9961,
+    latitude: -18.0450,
+    longitude: -70.2600,
     createdAt: new Date().toISOString(),
   },
   {
     id: 'cust-4',
-    name: 'Lavandería Burbujas',
+    name: 'Lavandería Burbujas del Sur',
     phone: '984556677',
-    deliveryAddress: 'Av. Las Begonias 440',
-    district: 'San Isidro',
-    addressReference: 'Piso 1, local comercial',
+    deliveryAddress: 'Av. Celestino Vargas 520',
+    district: 'Pocollay',
+    customerType: 'B2B',
+    addressReference: 'Al costado de la Iglesia de Pocollay',
     notes: 'Pago siempre con Yape',
-    latitude: -12.0969,
-    longitude: -77.0347,
+    latitude: -18.0050,
+    longitude: -70.2300,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'cust-5',
+    name: 'Familia Mendoza (Hogar)',
+    phone: '992334455',
+    deliveryAddress: 'Calle Arias y Aragüez 312',
+    district: 'Tacna (Cercado)',
+    customerType: 'B2C',
+    addressReference: 'Casa de 2 pisos, timbre blanco',
+    notes: 'Dejar bidón de agua en puerta de domicilio',
+    latitude: -18.0110,
+    longitude: -70.2505,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'cust-6',
+    name: 'Lucía Fernández (Residencial)',
+    phone: '981223344',
+    deliveryAddress: 'Av. Los Molles Mz. B Lt. 14',
+    district: 'Coronel Gregorio Albarracín',
+    customerType: 'B2C',
+    addressReference: 'Urbanización Santa Rosa',
+    notes: 'Llamar antes de entregar',
+    latitude: -18.0480,
+    longitude: -70.2630,
     createdAt: new Date().toISOString(),
   },
 ];

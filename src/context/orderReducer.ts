@@ -19,6 +19,10 @@ export type OrderAction =
   | { type: 'ADD_ORDER'; payload: Order }
   | { type: 'UPDATE_ORDER'; payload: Order }
   | {
+      type: 'CHANGE_STATUS';
+      payload: { id: string; status: OrderStatus; deliveredAt?: string };
+    }
+  | {
       type: 'UPDATE_ORDER_STATUS';
       payload: { id: string; status: OrderStatus; deliveredAt?: string };
     }
@@ -76,6 +80,7 @@ export function orderReducer(state: OrderState, action: OrderAction): OrderState
       };
     }
 
+    case 'CHANGE_STATUS':
     case 'UPDATE_ORDER_STATUS': {
       const { id, status, deliveredAt } = action.payload;
       return {

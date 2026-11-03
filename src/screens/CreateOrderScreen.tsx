@@ -27,9 +27,9 @@ import { RootStackParamList } from '../navigation/RootNavigator';
 import { useOrders } from '../context/OrderContext';
 import { useCustomers } from '../context/CustomerContext';
 import { useProducts } from '../context/ProductContext';
-import { Customer } from '../models/Customer';
+import { Customer, isB2BCustomer } from '../models/Customer';
 import { Product } from '../models/Product';
-import { Order, OrderItem, PaymentMethod, OrderPriority } from '../models/Order';
+import { Order, OrderItem, PaymentMethod, OrderPriority, ProductCategory } from '../models/Order';
 import {
   COLORS,
   PAYMENT_METHOD_CONFIG,
@@ -43,6 +43,7 @@ import { formatCurrency } from '../utils/formatters';
 import { geocodeAddress } from '../services/geocodingService';
 import { hapticImpact, hapticNotification, hapticSelection } from '../utils/haptics';
 import { Header } from '../components/common/Header';
+import { CustomInput } from '../components/common/CustomInput';
 import { LocationPickerModal } from '../components/common/LocationPickerModal';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateOrderScreen'>;
@@ -73,6 +74,10 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
   const [longitude, setLongitude] = useState<number | undefined>(route?.params?.initialLongitude);
   const [isGettingGps, setIsGettingGps] = useState(false);
   const [isMapModalVisible, setIsMapModalVisible] = useState(false);
+
+  // Estados de Validación Reactiva (errores visibles en texto rojo bajo cada input)
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [manualItemErrors, setManualItemErrors] = useState<Record<string, string>>({});
 
   // =========================================================================
   // PASO 2: PRODUCTOS
@@ -115,6 +120,7 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
       setLatitude(client.latitude);
       setLongitude(client.longitude);
       setClientMode('EXISTING');
+      setErrors({});
       hapticSelection();
     }
   };
@@ -142,6 +148,11 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
   // Manejo de cantidades en productos
   const handleAddProduct = (prod: Product) => {
     hapticImpact('light');
+    setErrors((errs) => {
+      const copy = { ...errs };
+      delete copy.orderItems;
+      return copy;
+    });
     setOrderItems((prev) => {
       const idx = prev.findIndex((item) => item.name.toLowerCase() === prod.name.toLowerCase());
       if (idx >= 0) {
@@ -178,16 +189,22 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handleAddManualItem = () => {
+    const itemErrors: Record<string, string> = {};
     if (!manualItemName.trim()) {
-      Alert.alert('Nombre Requerido', 'Indica el nombre del producto o servicio.');
-      return;
+      itemErrors.name = 'Indica el nombre del producto o servicio';
     }
     const priceNum = parseFloat(manualItemPrice);
     if (isNaN(priceNum) || priceNum <= 0) {
-      Alert.alert('Precio Inválido', 'Indica un precio mayor a 0.');
+      itemErrors.price = 'Indica un precio unitario mayor a S/. 0.00';
+    }
+
+    if (Object.keys(itemErrors).length > 0) {
+      setManualItemErrors(itemErrors);
+      hapticNotification('error');
       return;
     }
 
+    setManualItemErrors({});
     hapticImpact('medium');
     setOrderItems((prev) => [
       ...prev,
@@ -199,6 +216,12 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
         unit: manualItemUnit.trim() || 'Unidad',
       },
     ]);
+
+    setErrors((errs) => {
+      const copy = { ...errs };
+      delete copy.orderItems;
+      return copy;
+    });
 
     setManualItemName('');
     setManualItemPrice('');
@@ -244,28 +267,56 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
-  // Validaciones por paso
+  // Validaciones estrictas por paso (con mensajes visibles en rojo bajo cada input)
+  const validateStep1 = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (clientMode === 'EXISTING') {
+      if (!selectedCustomerId && !customerName.trim()) {
+        newErrors.customer = 'Debes seleccionar un cliente de la lista para continuar.';
+      }
+    } else {
+      if (!customerName.trim() || customerName.trim().length < 3) {
+        newErrors.customerName = 'Ingresa el nombre o razón social (mínimo 3 caracteres)';
+      }
+      const cleanPhone = customerPhone.replace(/\D/g, '');
+      if (!customerPhone.trim() || cleanPhone.length !== 9) {
+        newErrors.customerPhone = 'Ingresa un número celular válido de exactamente 9 dígitos';
+      }
+      if (!district.trim()) {
+        newErrors.district = 'Indica la ciudad, distrito o zona de entrega';
+      }
+      if (!deliveryAddress.trim() || deliveryAddress.trim().length < 5) {
+        newErrors.deliveryAddress = 'Ingresa la dirección exacta de entrega (mínimo 5 caracteres)';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleNextStep = () => {
     if (currentStep === 1) {
-      if (!customerName.trim() || customerName.trim().length < 2) {
-        Alert.alert('Cliente Requerido', 'Selecciona o escribe el nombre del cliente.');
-        return;
-      }
-      if (!customerPhone.trim() || customerPhone.replace(/\D/g, '').length < 6) {
-        Alert.alert('Teléfono Requerido', 'Ingresa un número de celular o teléfono válido (mín. 6 dígitos).');
-        return;
-      }
-      if (!deliveryAddress.trim()) {
-        Alert.alert('Dirección Requerida', 'Ingresa la dirección exacta de entrega.');
+      if (!validateStep1()) {
+        hapticNotification('error');
         return;
       }
       hapticImpact('medium');
       setCurrentStep(2);
     } else if (currentStep === 2) {
       if (orderItems.length === 0) {
-        Alert.alert('Sin Productos', 'Agrega al menos un producto o servicio al pedido.');
+        setErrors((prev) => ({
+          ...prev,
+          orderItems: 'Agrega al menos un producto o servicio del catálogo al pedido.',
+        }));
+        hapticNotification('error');
         return;
       }
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy.orderItems;
+        return copy;
+      });
       hapticImpact('medium');
       setCurrentStep(3);
     }
@@ -280,6 +331,21 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // Envío final del pedido
   const handleFinalSubmit = () => {
+    if (!customerName.trim() || !deliveryAddress.trim()) {
+      setCurrentStep(1);
+      validateStep1();
+      return;
+    }
+
+    if (orderItems.length === 0) {
+      setCurrentStep(2);
+      setErrors((prev) => ({
+        ...prev,
+        orderItems: 'El pedido debe contener al menos un producto para ser despachado.',
+      }));
+      return;
+    }
+
     let finalLat = latitude;
     let finalLng = longitude;
 
@@ -310,6 +376,26 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
     const givenCash = paymentMethod === 'CASH' ? parseFloat(cashAmountGiven) || undefined : undefined;
     const change = givenCash && givenCash > totalAmount ? givenCash - totalAmount : undefined;
 
+    // Determinar categoría logística correspondiente
+    let detectedCategory: ProductCategory = 'WATER';
+    if (orderItems.length > 0) {
+      const itemsText = orderItems.map((i) => i.name.toLowerCase()).join(' ');
+      if (itemsText.includes('gas') || itemsText.includes('balón') || itemsText.includes('glp')) {
+        detectedCategory = 'GAS';
+      } else if (itemsText.includes('harina') || itemsText.includes('pan') || itemsText.includes('manteca')) {
+        detectedCategory = 'BAKERY';
+      } else if (
+        itemsText.includes('lejía') ||
+        itemsText.includes('detergente') ||
+        itemsText.includes('limpieza') ||
+        itemsText.includes('desinfectante')
+      ) {
+        detectedCategory = 'CLEANING';
+      } else if (productCategoryFilter !== 'ALL') {
+        detectedCategory = productCategoryFilter as ProductCategory;
+      }
+    }
+
     const newOrder: Order = {
       id: `ord-${Date.now()}`,
       orderCode: newOrderCode,
@@ -319,7 +405,7 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
       deliveryAddress: deliveryAddress.trim(),
       district: district.trim(),
       addressReference: addressReference.trim() || undefined,
-      category: 'GENERAL',
+      category: detectedCategory,
       items: orderItems,
       totalAmount,
       paymentMethod,
@@ -523,15 +609,28 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                   {selectedCustomerObj ? (
                     <View style={styles.customerCardSelected}>
                       <View style={styles.customerCardHeader}>
-                        <View style={styles.avatarCircle}>
-                          <Text style={{ fontSize: 22 }}>👤</Text>
+                        <View
+                          style={[
+                            styles.avatarCircle,
+                            isB2BCustomer(selectedCustomerObj)
+                              ? styles.avatarCircleB2B
+                              : styles.avatarCircleB2C,
+                          ]}
+                        >
+                          <Ionicons
+                            name={isB2BCustomer(selectedCustomerObj) ? 'storefront' : 'person'}
+                            size={20}
+                            color={isB2BCustomer(selectedCustomerObj) ? '#2563EB' : '#059669'}
+                          />
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.customerCardName} numberOfLines={1}>
-                            {selectedCustomerObj.name}
-                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={styles.customerCardName} numberOfLines={1}>
+                              {selectedCustomerObj.name}
+                            </Text>
+                          </View>
                           <Text style={styles.customerCardPhone}>
-                            📞 {selectedCustomerObj.phone}
+                            📞 {selectedCustomerObj.phone} • {isB2BCustomer(selectedCustomerObj) ? 'B2B Negocio' : 'B2C Hogar'}
                           </Text>
                         </View>
                         <TouchableOpacity
@@ -560,6 +659,13 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                   ) : (
                     /* Buscador y lista rápida de clientes */
                     <View>
+                      {errors.customer ? (
+                        <View style={styles.errorNoticeBox}>
+                          <Ionicons name="alert-circle" size={16} color={COLORS.danger} />
+                          <Text style={styles.errorNoticeText}>{errors.customer}</Text>
+                        </View>
+                      ) : null}
+
                       <View style={styles.searchBarBox}>
                         <Ionicons name="search" size={18} color={COLORS.textMuted} />
                         <TextInput
@@ -579,13 +685,22 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                             onPress={() => applyCustomerData(cust.id)}
                             activeOpacity={0.7}
                           >
-                            <View style={styles.avatarMiniCircle}>
-                              <Text style={{ fontSize: 16 }}>👤</Text>
+                            <View
+                              style={[
+                                styles.avatarMiniCircle,
+                                isB2BCustomer(cust) ? styles.avatarMiniB2B : styles.avatarMiniB2C,
+                              ]}
+                            >
+                              <Ionicons
+                                name={isB2BCustomer(cust) ? 'storefront' : 'person'}
+                                size={14}
+                                color={isB2BCustomer(cust) ? '#2563EB' : '#059669'}
+                              />
                             </View>
                             <View style={{ flex: 1 }}>
                               <Text style={styles.customerPickName}>{cust.name}</Text>
                               <Text style={styles.customerPickSub}>
-                                {cust.phone} • {cust.district}
+                                {cust.phone} • {cust.district} • {isB2BCustomer(cust) ? 'B2B' : 'B2C'}
                               </Text>
                             </View>
                             <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
@@ -596,52 +711,68 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                   )}
                 </View>
               ) : (
-                /* Formulario Manual Simplificado */
+                /* Formulario Manual con Validaciones Visuales en Rojo */
                 <View style={styles.manualFormCard}>
-                  <Text style={styles.formFieldLabel}>Nombre Completo o Negocio *</Text>
-                  <TextInput
-                    style={styles.formInput}
+                  <CustomInput
+                    label="Nombre Completo o Razón Social"
                     placeholder="Ej. Bodega Don Lucho"
-                    placeholderTextColor={COLORS.textMuted}
                     value={customerName}
-                    onChangeText={setCustomerName}
+                    onChangeText={(text) => {
+                      setCustomerName(text);
+                      if (errors.customerName) setErrors((prev) => ({ ...prev, customerName: '' }));
+                    }}
+                    required
+                    icon="person-outline"
+                    error={errors.customerName}
                   />
 
-                  <Text style={styles.formFieldLabel}>Teléfono / WhatsApp *</Text>
-                  <TextInput
-                    style={styles.formInput}
+                  <CustomInput
+                    label="Teléfono Celular / WhatsApp"
                     placeholder="Ej. 987654321"
-                    placeholderTextColor={COLORS.textMuted}
                     value={customerPhone}
-                    onChangeText={setCustomerPhone}
+                    onChangeText={(text) => {
+                      setCustomerPhone(text);
+                      if (errors.customerPhone) setErrors((prev) => ({ ...prev, customerPhone: '' }));
+                    }}
                     keyboardType="phone-pad"
+                    maxLength={9}
+                    required
+                    icon="call-outline"
+                    error={errors.customerPhone}
                   />
 
-                  <Text style={styles.formFieldLabel}>Ciudad o Distrito *</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="Ej. San Borja, Surco, Miraflores..."
-                    placeholderTextColor={COLORS.textMuted}
+                  <CustomInput
+                    label="Ciudad o Distrito"
+                    placeholder="Ej. Tacna, Pocollay, Gregorio Albarracín..."
                     value={district}
-                    onChangeText={setDistrict}
+                    onChangeText={(text) => {
+                      setDistrict(text);
+                      if (errors.district) setErrors((prev) => ({ ...prev, district: '' }));
+                    }}
+                    required
+                    icon="business-outline"
+                    error={errors.district}
                   />
 
-                  <Text style={styles.formFieldLabel}>Dirección Exacta de Entrega *</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="Ej. Av. Javier Prado Este 2450"
-                    placeholderTextColor={COLORS.textMuted}
+                  <CustomInput
+                    label="Dirección Exacta de Entrega"
+                    placeholder="Ej. Av. Bolognesi 845"
                     value={deliveryAddress}
-                    onChangeText={setDeliveryAddress}
+                    onChangeText={(text) => {
+                      setDeliveryAddress(text);
+                      if (errors.deliveryAddress) setErrors((prev) => ({ ...prev, deliveryAddress: '' }));
+                    }}
+                    required
+                    icon="location-outline"
+                    error={errors.deliveryAddress}
                   />
 
-                  <Text style={styles.formFieldLabel}>Referencia (Opcional)</Text>
-                  <TextInput
-                    style={styles.formInput}
+                  <CustomInput
+                    label="Referencia (Opcional)"
                     placeholder="Ej. Frente al parque, puerta blanca"
-                    placeholderTextColor={COLORS.textMuted}
                     value={addressReference}
                     onChangeText={setAddressReference}
+                    icon="navigate-outline"
                   />
 
                   {/* Botón de Geocodificación Automática */}
@@ -704,6 +835,14 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* =================================================================== */}
           {currentStep === 2 && (
             <View>
+              {/* Alerta de Validación Visible en Rojo si no hay artículos */}
+              {errors.orderItems ? (
+                <View style={styles.errorNoticeBox}>
+                  <Ionicons name="alert-circle" size={18} color={COLORS.danger} />
+                  <Text style={styles.errorNoticeText}>{errors.orderItems}</Text>
+                </View>
+              ) : null}
+
               {/* Resumen flotante de artículos ya agregados */}
               {orderItems.length > 0 && (
                 <View style={styles.selectedItemsSummaryCard}>
@@ -759,33 +898,45 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                 </TouchableOpacity>
               </View>
 
-              {/* Formulario de ítem libre si se expande */}
+              {/* Formulario de ítem libre si se expande con validación en rojo */}
               {showManualItemForm && (
                 <View style={styles.manualItemCard}>
                   <Text style={styles.manualItemTitle}>Agregar Ítem Libre / Personalizado</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="Descripción o servicio"
-                    placeholderTextColor={COLORS.textMuted}
+                  <CustomInput
+                    label="Descripción del Producto o Servicio"
+                    placeholder="Ej. Bidón de Agua Especial 20L"
                     value={manualItemName}
-                    onChangeText={setManualItemName}
+                    onChangeText={(t) => {
+                      setManualItemName(t);
+                      if (manualItemErrors.name) setManualItemErrors((p) => ({ ...p, name: '' }));
+                    }}
+                    required
+                    error={manualItemErrors.name}
                   />
+
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TextInput
-                      style={[styles.formInput, { flex: 1 }]}
-                      placeholder="Precio S/"
-                      placeholderTextColor={COLORS.textMuted}
-                      value={manualItemPrice}
-                      onChangeText={setManualItemPrice}
-                      keyboardType="decimal-pad"
-                    />
-                    <TextInput
-                      style={[styles.formInput, { flex: 1 }]}
-                      placeholder="Unidad (Caja, Galón)"
-                      placeholderTextColor={COLORS.textMuted}
-                      value={manualItemUnit}
-                      onChangeText={setManualItemUnit}
-                    />
+                    <View style={{ flex: 1 }}>
+                      <CustomInput
+                        label="Precio S/"
+                        placeholder="Ej. 18.00"
+                        value={manualItemPrice}
+                        onChangeText={(t) => {
+                          setManualItemPrice(t);
+                          if (manualItemErrors.price) setManualItemErrors((p) => ({ ...p, price: '' }));
+                        }}
+                        keyboardType="decimal-pad"
+                        required
+                        error={manualItemErrors.price}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <CustomInput
+                        label="Unidad"
+                        placeholder="Ej. Unidad, Galón"
+                        value={manualItemUnit}
+                        onChangeText={setManualItemUnit}
+                      />
+                    </View>
                   </View>
                   <TouchableOpacity
                     style={styles.addManualItemConfirmBtn}
@@ -973,9 +1124,7 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
             onPress={handleNextStep}
             activeOpacity={0.88}
           >
-            <Text style={styles.continueButtonText}>
-              Continuar al Paso {currentStep + 1}
-            </Text>
+            <Text style={styles.continueButtonText}>Continuar</Text>
             <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
           </TouchableOpacity>
         ) : (
@@ -985,7 +1134,7 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
             activeOpacity={0.88}
           >
             <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
-            <Text style={styles.confirmFinalButtonText}>Confirmar y Despachar Pedido</Text>
+            <Text style={styles.confirmFinalButtonText}>Confirmar Despacho</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -1127,9 +1276,17 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+  },
+  avatarCircleB2B: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  avatarCircleB2C: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
   },
   customerCardName: {
     fontSize: 16,
@@ -1217,9 +1374,17 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+  },
+  avatarMiniB2B: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  avatarMiniB2C: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
   },
   customerPickName: {
     fontSize: 14,
@@ -1632,5 +1797,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  errorNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#F87171',
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    marginBottom: SPACING.md,
+    gap: 8,
+  },
+  errorNoticeText: {
+    color: COLORS.danger,
+    fontSize: 13,
+    fontWeight: '700',
+    flex: 1,
   },
 });

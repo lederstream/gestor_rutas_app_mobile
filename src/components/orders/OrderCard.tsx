@@ -28,6 +28,7 @@ import { formatCurrency } from '../../utils/formatters';
 import { hapticImpact, hapticSelection } from '../../utils/haptics';
 import { StatusBadge } from './StatusBadge';
 import { PriorityBadge } from './PriorityBadge';
+import { isB2BCustomer } from '../../models/Customer';
 
 export interface OrderCardProps {
   order: Order;
@@ -69,21 +70,26 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   const handleOpenGps = (e: any) => {
     e.stopPropagation?.();
     hapticSelection();
-    const fullAddress = `${order.deliveryAddress}, ${order.district}, Lima, Perú`;
-    const encoded = encodeURIComponent(fullAddress);
+    let destination = '';
+    if (order.latitude !== undefined && order.longitude !== undefined) {
+      destination = `${order.latitude},${order.longitude}`;
+    } else {
+      const fullAddress = `${order.deliveryAddress}, ${order.district}, Tacna, Perú`;
+      destination = encodeURIComponent(fullAddress);
+    }
     const url = Platform.select({
-      ios: `maps://?daddr=${encoded}&dirflg=d`,
-      android: `google.navigation:q=${encoded}&mode=d`,
-      default: `https://www.google.com/maps/dir/?api=1&destination=${encoded}`,
+      ios: `maps://?daddr=${destination}&dirflg=d`,
+      android: `google.navigation:q=${destination}&mode=d`,
+      default: `https://www.google.com/maps/dir/?api=1&destination=${destination}`,
     });
 
     Linking.canOpenURL(url)
       .then((supported) => {
         if (supported) return Linking.openURL(url);
-        return Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encoded}`);
+        return Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destination}`);
       })
       .catch(() => {
-        Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encoded}`);
+        Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destination}`);
       });
   };
 
@@ -102,11 +108,18 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         <StatusBadge status={order.status} size="sm" />
       </View>
 
-      {/* 2. Cliente y Distrito */}
+      {/* 2. Cliente y Distrito con Identificador B2B (Negocio) vs B2C (Persona) */}
       <View style={styles.customerRow}>
-        <Text style={styles.customerName} numberOfLines={1}>
-          {order.customerName}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, marginRight: 8 }}>
+          <Ionicons
+            name={isB2BCustomer({ name: order.customerName }) ? 'storefront-outline' : 'person-outline'}
+            size={15}
+            color={isB2BCustomer({ name: order.customerName }) ? '#2563EB' : '#059669'}
+          />
+          <Text style={styles.customerName} numberOfLines={1}>
+            {order.customerName}
+          </Text>
+        </View>
         <View style={styles.districtBadge}>
           <Text style={styles.districtText}>{order.district}</Text>
         </View>
@@ -187,7 +200,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           activeOpacity={0.85}
         >
           <Ionicons name="checkmark-done" size={18} color="#FFFFFF" />
-          <Text style={styles.primaryActionTextWhite}>Confirmar Entrega Conforme</Text>
+          <Text style={styles.primaryActionTextWhite}>Confirmar Entrega</Text>
         </TouchableOpacity>
       )}
     </TouchableOpacity>

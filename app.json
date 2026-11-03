@@ -16,11 +16,18 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0F172A"
-      }
+      },
+      "useCleartextTraffic": true
     },
     "plugins": [
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Gestor de Rutas necesita tu ubicación para calcular las distancias en tiempo real hacia las entregas."
+        }
+      ]
     ]
   }
 }

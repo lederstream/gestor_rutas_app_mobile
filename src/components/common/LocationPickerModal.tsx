@@ -5,7 +5,7 @@
  * ============================================================================
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,21 +17,32 @@ import {
   Alert,
   Dimensions,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, PROVIDER_DEFAULT, Region } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { COLORS } from '../../utils/constants';
 import { geocodeAddress } from '../../services/geocodingService';
 import { hapticImpact, hapticNotification, hapticSelection } from '../../utils/haptics';
 
 const { width, height } = Dimensions.get('window');
 
-// Región inicial por defecto (Lima Metropolitana / Centro)
+// Región inicial por defecto (Tacna Centro / Paseo Cívico)
 const DEFAULT_COORDS = {
-  latitude: -12.1118,
-  longitude: -77.0342,
+  latitude: -18.0139,
+  longitude: -70.2519,
 };
+
+// Distritos rápidos de Tacna para salto instantáneo del pin
+const TACNA_DISTRICTS_QUICK = [
+  { label: 'Tacna Centro', latitude: -18.0139, longitude: -70.2519 },
+  { label: 'Gregorio Albarracín', latitude: -18.0450, longitude: -70.2600 },
+  { label: 'Pocollay', latitude: -18.0050, longitude: -70.2300 },
+  { label: 'Alto de la Alianza', latitude: -17.9980, longitude: -70.2520 },
+  { label: 'Ciudad Nueva', latitude: -17.9920, longitude: -70.2450 },
+];
 
 export interface LocationPickerModalProps {
   visible: boolean;
@@ -54,7 +65,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
   subtitle = 'Toca en el mapa o arrastra el pin hasta el lugar exacto',
   addressHint = '',
 }) => {
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<WebView>(null);
 
   const [selectedCoord, setSelectedCoord] = useState<{
     latitude: number;
@@ -66,6 +77,36 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
 
   const [searchQuery, setSearchQuery] = useState(addressHint);
   const [isSearching, setIsSearching] = useState(false);
+  const [isGettingGps, setIsGettingGps] = useState(false);
+
+  // Obtener la ubicación GPS real del celular y centrar el pin allí
+  const handleUseCurrentGps = async () => {
+    try {
+      setIsGettingGps(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permiso de Ubicación',
+          'Activa los permisos de ubicación en tu teléfono para detectar tu GPS en tiempo real.'
+        );
+        setIsGettingGps(false);
+        return;
+      }
+
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      if (loc?.coords) {
+        updateMapPin(loc.coords.latitude, loc.coords.longitude);
+        hapticNotification('success');
+      }
+    } catch {
+      Alert.alert('GPS', 'No se pudo leer la ubicación del sensor GPS.');
+    } finally {
+      setIsGettingGps(false);
+    }
+  };
 
   // Sincronizar si cambian las coordenadas iniciales al abrir
   useEffect(() => {
@@ -76,24 +117,25 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
       if (addressHint) {
         setSearchQuery(addressHint);
       }
+      // Actualizar el pin en el mapa si el WebView ya estaba montado
       setTimeout(() => {
-        mapRef.current?.animateToRegion(
-          {
-            latitude: lat,
-            longitude: lng,
-            latitudeDelta: 0.015,
-            longitudeDelta: 0.015,
-          },
-          400
-        );
-      }, 300);
+        mapRef.current?.injectJavaScript(`window.updatePin && window.updatePin(${lat}, ${lng}); true;`);
+      }, 400);
     }
   }, [visible, initialLatitude, initialLongitude, addressHint]);
 
-  // Manejar toque en el mapa para colocar el pin
-  const handleMapPress = (e: any) => {
-    const { latitude, longitude } = e.nativeEvent.coordinate;
-    setSelectedCoord({ latitude, longitude });
+  // Actualizar coordenadas y sincronizar marcador del mapa
+  const updateMapPin = (lat: number, lng: number) => {
+    setSelectedCoord({ latitude: lat, longitude: lng });
+    mapRef.current?.injectJavaScript(`window.updatePin && window.updatePin(${lat}, ${lng}); true;`);
+  };
+
+  // Ajuste fino direccional para mover el pin en el mapa de Tacna
+  const handleNudge = (deltaLat: number, deltaLng: number) => {
+    hapticSelection();
+    const newLat = parseFloat((selectedCoord.latitude + deltaLat).toFixed(6));
+    const newLng = parseFloat((selectedCoord.longitude + deltaLng).toFixed(6));
+    updateMapPin(newLat, newLng);
   };
 
   // Buscar dirección con servicio centralizado
@@ -108,22 +150,13 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     setIsSearching(false);
 
     if (result) {
-      setSelectedCoord({ latitude: result.latitude, longitude: result.longitude });
-      mapRef.current?.animateToRegion(
-        {
-          latitude: result.latitude,
-          longitude: result.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        },
-        600
-      );
+      updateMapPin(result.latitude, result.longitude);
       hapticNotification('success');
     } else {
       hapticNotification('warning');
       Alert.alert(
         'Dirección no encontrada',
-        'No se hallaron coordenadas automáticas. Puedes navegar en el mapa y tocar directamente para colocar el pin.'
+        'No se hallaron coordenadas automáticas. Toca directamente en el mapa para colocar el pin.'
       );
     }
   };
@@ -134,16 +167,130 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
   };
 
   const handleCenterOnPin = () => {
-    mapRef.current?.animateToRegion(
-      {
-        latitude: selectedCoord.latitude,
-        longitude: selectedCoord.longitude,
-        latitudeDelta: 0.008,
-        longitudeDelta: 0.008,
-      },
-      400
-    );
+    hapticImpact('light');
+    updateMapPin(DEFAULT_COORDS.latitude, DEFAULT_COORDS.longitude);
   };
+
+  // Manejador de eventos desde el mapa interactivo (tap en mapa o drag del pin)
+  const handleWebViewMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'LOCATION_CHANGED' && typeof data.latitude === 'number' && typeof data.longitude === 'number') {
+        setSelectedCoord({
+          latitude: parseFloat(data.latitude.toFixed(6)),
+          longitude: parseFloat(data.longitude.toFixed(6)),
+        });
+        hapticSelection();
+      }
+    } catch {
+      // Ignorar mensajes mal formateados
+    }
+  };
+
+  // HTML interactivo de Leaflet + OpenStreetMap 100% libre sin API Keys
+  const leafletPickerHtml = useMemo(() => {
+    const lat = selectedCoord.latitude;
+    const lng = selectedCoord.longitude;
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body, #map { width:100%; height:100%; overflow:hidden; background-color:#F1F5F9; }
+    .custom-pin {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+    }
+    .pin-bubble {
+      background: #EF4444;
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 11px;
+      padding: 5px 10px;
+      border-radius: 14px;
+      border: 2px solid #FFFFFF;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      white-space: nowrap;
+      font-family: -apple-system, Roboto, sans-serif;
+    }
+    .pin-arrow {
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 8px solid #EF4444;
+    }
+    .pin-shadow {
+      width: 14px;
+      height: 6px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 50%;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script>
+    var map = L.map('map', {
+      zoomControl: true,
+      attributionControl: false
+    }).setView([${lat}, ${lng}], 16);
+
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: 'Tiles &copy; Esri'
+    }).addTo(map);
+
+    var pinIcon = L.divIcon({
+      className: '',
+      html: '<div class="custom-pin"><div class="pin-bubble">📍 Punto de Entrega</div><div class="pin-arrow"></div><div class="pin-shadow"></div></div>',
+      iconSize: [140, 44],
+      iconAnchor: [70, 40]
+    });
+
+    var marker = L.marker([${lat}, ${lng}], {
+      icon: pinIcon,
+      draggable: true
+    }).addTo(map);
+
+    function sendCoord(lat, lng) {
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'LOCATION_CHANGED',
+          latitude: lat,
+          longitude: lng
+        }));
+      }
+    }
+
+    marker.on('dragend', function() {
+      var p = marker.getLatLng();
+      sendCoord(p.lat, p.lng);
+    });
+
+    map.on('click', function(e) {
+      marker.setLatLng(e.latlng);
+      sendCoord(e.latlng.lat, e.latlng.lng);
+    });
+
+    window.updatePin = function(newLat, newLng) {
+      marker.setLatLng([newLat, newLng]);
+      map.setView([newLat, newLng], 16, { animate: true });
+    };
+  </script>
+</body>
+</html>
+`;
+  }, []); // Creado una sola vez para que el mapa no parpadee al moverse
 
   return (
     <Modal
@@ -185,7 +332,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
             <Ionicons name="search" size={18} color={COLORS.textMuted} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Buscar calle, avenida o distrito..."
+              placeholder="Buscar calle, avenida o distrito en Tacna..."
               placeholderTextColor={COLORS.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -203,43 +350,72 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
               </TouchableOpacity>
             )}
           </View>
+
+          {/* Accesos Rápidos a Distritos de Tacna y GPS en Vivo */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.quickDistrictsRow}
+          >
+            <TouchableOpacity
+              style={styles.currentGpsChip}
+              onPress={handleUseCurrentGps}
+              activeOpacity={0.8}
+            >
+              {isGettingGps ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="navigate" size={13} color="#FFFFFF" />
+                  <Text style={styles.currentGpsChipText}>Mi Ubicación GPS</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {TACNA_DISTRICTS_QUICK.map((d) => (
+              <TouchableOpacity
+                key={d.label}
+                style={styles.quickDistChip}
+                onPress={() => {
+                  hapticImpact('light');
+                  updateMapPin(d.latitude, d.longitude);
+                }}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="location-outline" size={12} color={COLORS.primary} />
+                <Text style={styles.quickDistText}>{d.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
 
-        {/* Mapa Interactivo */}
+        {/* Mapa Interactivo con Leaflet + OpenStreetMap */}
         <View style={styles.mapContainer}>
-          <MapView
+          <WebView
             ref={mapRef}
-            provider={PROVIDER_DEFAULT}
-            style={styles.map}
-            initialRegion={{
-              latitude: selectedCoord.latitude,
-              longitude: selectedCoord.longitude,
-              latitudeDelta: 0.02,
-              longitudeDelta: 0.02,
+            source={{
+              html: leafletPickerHtml,
+              baseUrl: 'https://arcgisonline.com',
             }}
-            onPress={handleMapPress}
-            showsUserLocation={true}
-            showsCompass={true}
-          >
-            <Marker
-              coordinate={selectedCoord}
-              draggable={true}
-              onDragEnd={(e) => setSelectedCoord(e.nativeEvent.coordinate)}
-              title="Punto de Entrega"
-              description="Arrastra o toca para cambiar de lugar"
-            >
-              <View style={styles.customPinContainer}>
-                <View style={styles.pinBubble}>
-                  <Ionicons name="location" size={18} color="#FFFFFF" />
-                  <Text style={styles.pinBubbleText}>ENTREGA</Text>
-                </View>
-                <View style={styles.pinArrow} />
-                <View style={styles.pinShadow} />
+            originWhitelist={['*']}
+            userAgent="GestorRutasMobile/1.0 (Linux; Android)"
+            style={styles.map}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            allowFileAccess={true}
+            scalesPageToFit={true}
+            mixedContentMode="always"
+            onMessage={handleWebViewMessage}
+            startInLoadingState={true}
+            renderLoading={() => (
+              <View style={styles.mapLoadingOverlay}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+                <Text style={styles.mapLoadingText}>Cargando mapa de Tacna...</Text>
               </View>
-            </Marker>
-          </MapView>
+            )}
+          />
 
-          {/* Ayuda Flotante */}
+          {/* Ayuda flotante para indicar que se puede tocar la pantalla */}
           <View style={styles.helpPill}>
             <Ionicons name="finger-print" size={14} color="#0284C7" />
             <Text style={styles.helpPillText}>
@@ -522,5 +698,88 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800',
+  },
+  mapLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  mapLoadingText: {
+    marginTop: 8,
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  nudgeContainer: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 14,
+    padding: 6,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  nudgeRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginVertical: 4,
+  },
+  nudgeBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    minWidth: 42,
+  },
+  nudgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginTop: 2,
+  },
+  quickDistrictsRow: {
+    paddingTop: 8,
+    gap: 6,
+  },
+  quickDistChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  quickDistText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  currentGpsChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#0284C7',
+    paddingVertical: 5,
+    paddingHorizontal: 11,
+    borderRadius: 12,
+  },
+  currentGpsChipText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

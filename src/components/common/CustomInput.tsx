@@ -5,13 +5,15 @@
  * ============================================================================
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
   TextInput,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
+  Platform,
   KeyboardTypeOptions,
   StyleProp,
   ViewStyle,
@@ -55,8 +57,15 @@ export const CustomInput: React.FC<CustomInputProps> = ({
   maxLength,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
   const hasError = Boolean(error);
+
+  const handleContainerPress = () => {
+    if (editable && inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -68,7 +77,8 @@ export const CustomInput: React.FC<CustomInputProps> = ({
         </View>
       )}
 
-      <View
+      <Pressable
+        onPress={handleContainerPress}
         style={[
           styles.inputWrapper,
           multiline && styles.inputWrapperMultiline,
@@ -93,6 +103,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
         )}
 
         <TextInput
+          ref={inputRef}
           style={[styles.input, multiline && styles.inputMultiline]}
           value={value}
           onChangeText={onChangeText}
@@ -117,7 +128,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
             <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
           </TouchableOpacity>
         )}
-      </View>
+      </Pressable>
 
       {hasError ? (
         <View style={styles.messageRow}>
@@ -186,12 +197,16 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    height: '100%',
+    minHeight: 44,
     fontSize: 15,
     color: COLORS.textPrimary,
-    paddingVertical: 8,
+    paddingVertical: Platform.OS === 'android' ? 4 : 8,
   },
   inputMultiline: {
-    height: '100%',
+    minHeight: 80,
+    height: undefined,
+    textAlignVertical: 'top',
   },
   clearButton: {
     padding: 4,

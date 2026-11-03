@@ -93,7 +93,7 @@ export const ClientHomeScreen: React.FC = () => {
       customerName: user.name,
       customerPhone: user.phone,
       deliveryAddress: user.deliveryAddress || 'Dirección registrada',
-      district: user.district || 'Lima',
+      district: user.district || 'Tacna',
       addressReference: user.addressReference,
       latitude: user.latitude,
       longitude: user.longitude,
@@ -146,7 +146,7 @@ export const ClientHomeScreen: React.FC = () => {
         <View style={styles.headerInfoCol}>
           <Text style={styles.welcomeGreeting}>¡Hola, {user?.name}! 👋</Text>
           <Text style={styles.addressLine} numberOfLines={1}>
-            📍 {user?.deliveryAddress || 'Mi Negocio'} ({user?.district || 'Lima'})
+            📍 {user?.deliveryAddress || 'Mi Negocio'} ({user?.district || 'Tacna'})
           </Text>
         </View>
 

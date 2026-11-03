@@ -10,6 +10,10 @@ export type OrderStatus = 'PENDING' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
 export type OrderPriority = 'URGENT' | 'HIGH' | 'NORMAL';
 
 export type ProductCategory =
+  | 'WATER'
+  | 'GAS'
+  | 'BAKERY'
+  | 'CLEANING'
   | 'GENERAL'
   | 'FOOD'
   | 'SERVICES'

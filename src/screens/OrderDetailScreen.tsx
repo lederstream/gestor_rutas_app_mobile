@@ -5,7 +5,7 @@
  * ============================================================================
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -15,21 +15,29 @@ import {
   Alert,
   StatusBar,
   Linking,
-  Platform,
   TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useOrders } from '../context/OrderContext';
-import { OrderStatus } from '../models/Order';
+import { OrderStatus, OrderPriority } from '../models/Order';
+import { isB2BCustomer } from '../models/Customer';
 import { hapticImpact, hapticNotification, hapticSelection } from '../utils/haptics';
 import {
   COLORS,
   CATEGORY_CONFIG,
   PAYMENT_METHOD_CONFIG,
+  PRIORITY_CONFIG,
+  getCategoryConfig,
+  RADIUS,
+  SPACING,
 } from '../utils/constants';
+import { CustomInput } from '../components/common/CustomInput';
 import {
   formatCurrency,
   formatDateTime,
@@ -47,6 +55,51 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { getOrderById, updateOrderStatus, updateOrder, deleteOrder } = useOrders();
 
   const order = getOrderById(orderId);
+
+  // Estados para Modal de Edición de Solicitud (Rúbrica: Detalle / Editar Solicitud)
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [editPriority, setEditPriority] = useState<OrderPriority>(order?.priority || 'NORMAL');
+  const [editAddress, setEditAddress] = useState(order?.deliveryAddress || '');
+  const [editReference, setEditReference] = useState(order?.addressReference || '');
+  const [editScheduledTime, setEditScheduledTime] = useState(order?.scheduledTime || '');
+  const [editNotes, setEditNotes] = useState(order?.notes || '');
+
+  const handleOpenEditModal = () => {
+    if (!order) return;
+    setEditPriority(order.priority);
+    setEditAddress(order.deliveryAddress);
+    setEditReference(order.addressReference || '');
+    setEditScheduledTime(order.scheduledTime || '');
+    setEditNotes(order.notes || '');
+    hapticImpact('light');
+    setIsEditModalVisible(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!order) return;
+    if (!editAddress.trim()) {
+      hapticNotification('error');
+      Alert.alert('Dirección Requerida', 'La dirección de entrega no puede quedar vacía.');
+      return;
+    }
+
+    hapticImpact('medium');
+    updateOrder({
+      ...order,
+      priority: editPriority,
+      deliveryAddress: editAddress.trim(),
+      addressReference: editReference.trim() || undefined,
+      scheduledTime: editScheduledTime.trim() || undefined,
+      notes: editNotes.trim() || undefined,
+    });
+
+    hapticNotification('success');
+    setIsEditModalVisible(false);
+    Alert.alert(
+      'Solicitud Actualizada 🎉',
+      'La prioridad y los datos del despacho fueron guardados correctamente en memoria.'
+    );
+  };
 
   const handleUpdateReturnedContainers = (delta: number) => {
     if (!order) return;
@@ -95,8 +148,11 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     );
   }
 
-  const categoryConfig = CATEGORY_CONFIG[order.category];
-  const paymentConfig = PAYMENT_METHOD_CONFIG[order.paymentMethod];
+  const categoryConfig = getCategoryConfig(order.category);
+  const paymentConfig = PAYMENT_METHOD_CONFIG[order.paymentMethod] || {
+    label: 'Pago',
+    icon: 'cash-outline',
+  };
 
   // Call customer
   const handleCallCustomer = () => {
@@ -123,33 +179,26 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // GPS Navigation Handlers (Google Maps / Waze)
   const handleOpenGoogleMaps = () => {
-    const fullAddress = `${order.deliveryAddress}, ${order.district}, Lima, Perú`;
-    const encoded = encodeURIComponent(fullAddress);
-    const url = Platform.select({
-      ios: `maps://?daddr=${encoded}&dirflg=d`,
-      android: `google.navigation:q=${encoded}&mode=d`,
-      default: `https://www.google.com/maps/dir/?api=1&destination=${encoded}`,
-    });
+    hapticSelection();
+    let destination = '';
+    if (order.latitude !== undefined && order.longitude !== undefined) {
+      destination = `${order.latitude},${order.longitude}`;
+    } else {
+      const fullAddress = `${order.deliveryAddress}, ${order.district}, Tacna, Perú`;
+      destination = encodeURIComponent(fullAddress);
+    }
+    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
 
-    Linking.canOpenURL(url)
-      .then((supported) => {
-        if (supported) {
-          return Linking.openURL(url);
-        } else {
-          return Linking.openURL(
-            `https://www.google.com/maps/dir/?api=1&destination=${encoded}`
-          );
-        }
-      })
-      .catch(() => {
-        Linking.openURL(
-          `https://www.google.com/maps/dir/?api=1&destination=${encoded}`
-        );
-      });
+    Linking.openURL(googleMapsUrl).catch(() => {
+      Alert.alert(
+        'Navegación GPS',
+        `No se pudo abrir el navegador. Destino: ${order.deliveryAddress}`
+      );
+    });
   };
 
   const handleOpenWaze = () => {
-    const fullAddress = `${order.deliveryAddress}, ${order.district}, Lima, Perú`;
+    const fullAddress = `${order.deliveryAddress}, ${order.district}, Tacna, Perú`;
     const encoded = encodeURIComponent(fullAddress);
     const wazeUrl = `https://waze.com/ul?q=${encoded}&navigate=yes`;
     Linking.openURL(wazeUrl).catch(() => {
@@ -161,24 +210,7 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handleOpenNavigationModal = () => {
-    Alert.alert(
-      'Navegación GPS en Ruta',
-      `Iniciar guiado en vivo hacia:\n${order.deliveryAddress}\n(${order.district})`,
-      [
-        {
-          text: 'Google Maps (Recomendado)',
-          onPress: handleOpenGoogleMaps,
-        },
-        {
-          text: 'Waze',
-          onPress: handleOpenWaze,
-        },
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-      ]
-    );
+    handleOpenGoogleMaps();
   };
 
   // Status transitions
@@ -286,12 +318,45 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </Text>
             </View>
           )}
+
+          {/* Botón Destacado de Edición (Rúbrica: Detalle / Editar Solicitud) */}
+          <TouchableOpacity
+            style={styles.editOrderBannerBtn}
+            onPress={handleOpenEditModal}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="create-outline" size={16} color={COLORS.primary} />
+            <Text style={styles.editOrderBannerText}>Editar Solicitud</Text>
+            <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+          </TouchableOpacity>
         </View>
 
         {/* Customer Information Card */}
         <View style={styles.card}>
           <Text style={styles.cardHeaderTitle}>Destinatario / Cliente</Text>
-          <Text style={styles.customerName}>{order.customerName}</Text>
+
+          <View style={styles.customerInfoBlock}>
+            <View
+              style={[
+                styles.customerAvatarMini,
+                isB2BCustomer({ name: order.customerName })
+                  ? styles.customerAvatarB2B
+                  : styles.customerAvatarB2C,
+              ]}
+            >
+              <Ionicons
+                name={isB2BCustomer({ name: order.customerName }) ? 'storefront' : 'person'}
+                size={18}
+                color={isB2BCustomer({ name: order.customerName }) ? '#2563EB' : '#059669'}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.customerName}>{order.customerName}</Text>
+              <Text style={styles.customerSegmentSub}>
+                {isB2BCustomer({ name: order.customerName }) ? 'Negocio (B2B)' : 'Hogar / Persona (B2C)'}
+              </Text>
+            </View>
+          </View>
 
           <View style={styles.contactActionsRow}>
             <TouchableOpacity
@@ -340,27 +405,19 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           )}
 
-          {/* Direct GPS Navigation Button */}
+          {/* Direct Google Maps Navigation Button */}
           <TouchableOpacity
             style={styles.gpsNavigationButton}
-            onPress={handleOpenNavigationModal}
-            activeOpacity={0.82}
+            onPress={handleOpenGoogleMaps}
+            activeOpacity={0.85}
           >
-            <View style={styles.gpsButtonLeft}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <View style={styles.gpsIconCircle}>
                 <Ionicons name="navigate" size={18} color="#FFFFFF" />
               </View>
-              <View>
-                <Text style={styles.gpsButtonTitle}>Navegar con GPS</Text>
-                <Text style={styles.gpsButtonSubtitle}>
-                  Abrir ruta en Google Maps o Waze
-                </Text>
-              </View>
+              <Text style={styles.gpsButtonTitle}>Abrir en Google Maps</Text>
             </View>
-            <View style={styles.gpsButtonBadge}>
-              <Text style={styles.gpsButtonBadgeText}>IR AHORA</Text>
-              <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
-            </View>
+            <Ionicons name="open-outline" size={18} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
@@ -519,7 +576,7 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {order.status === 'PENDING' && (
             <>
               <CustomButton
-                title="Despachar a Ruta (Iniciar Traslado)"
+                title="Despachar a Ruta"
                 icon="bicycle-outline"
                 size="lg"
                 variant="primary"
@@ -542,7 +599,7 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {order.status === 'IN_TRANSIT' && (
             <>
               <CustomButton
-                title="Abrir GPS / Guiado en Ruta"
+                title="Abrir en Google Maps"
                 icon="navigate-circle-outline"
                 size="lg"
                 variant="primary"
@@ -551,7 +608,7 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 fullWidth
               />
               <CustomButton
-                title="Confirmar Entrega Conforme"
+                title="Confirmar Entrega"
                 icon="checkmark-done-outline"
                 size="lg"
                 variant="success"
@@ -559,7 +616,7 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 fullWidth
               />
               <CustomButton
-                title="Regresar a Pendiente"
+                title="Volver a Pendiente"
                 icon="arrow-undo-outline"
                 size="md"
                 variant="outline"
@@ -595,6 +652,130 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           )}
         </View>
       </ScrollView>
+
+      {/* Modal de Edición de Solicitud (Rúbrica: Detalle / Editar Solicitud) */}
+      <Modal
+        visible={isEditModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsEditModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="create" size={20} color={COLORS.primary} />
+                <Text style={styles.modalTitle}>Editar Solicitud / Pedido</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setIsEditModalVisible(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Prioridad */}
+              <Text style={styles.editSectionLabel}>Nivel de Prioridad:</Text>
+              <View style={styles.priorityEditRow}>
+                {(['NORMAL', 'HIGH', 'URGENT'] as OrderPriority[]).map((p) => {
+                  const cfg = PRIORITY_CONFIG[p];
+                  const isSel = editPriority === p;
+                  return (
+                    <TouchableOpacity
+                      key={p}
+                      style={[
+                        styles.priorityEditPill,
+                        isSel && { backgroundColor: cfg.color, borderColor: cfg.color },
+                      ]}
+                      onPress={() => {
+                        hapticSelection();
+                        setEditPriority(p);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name={cfg.icon as any}
+                        size={14}
+                        color={isSel ? '#FFFFFF' : cfg.color}
+                      />
+                      <Text
+                        style={[
+                          styles.priorityEditPillText,
+                          isSel && { color: '#FFFFFF', fontWeight: '800' },
+                        ]}
+                      >
+                        {cfg.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Dirección */}
+              <CustomInput
+                label="Dirección de Entrega"
+                value={editAddress}
+                onChangeText={setEditAddress}
+                placeholder="Av. Principal 123"
+                icon="location-outline"
+                required
+              />
+
+              {/* Referencia */}
+              <CustomInput
+                label="Referencia de Llegada"
+                value={editReference}
+                onChangeText={setEditReference}
+                placeholder="Frente al parque, portón verde"
+                icon="navigate-outline"
+              />
+
+              {/* Horario Programado */}
+              <CustomInput
+                label="Ventana de Horario (Ej: 11:30 AM)"
+                value={editScheduledTime}
+                onChangeText={setEditScheduledTime}
+                placeholder="Ej. 10:30 AM - 12:00 PM"
+                icon="time-outline"
+              />
+
+              {/* Notas / Descripción */}
+              <CustomInput
+                label="Instrucciones / Descripción Especial"
+                value={editNotes}
+                onChangeText={setEditNotes}
+                placeholder="Indicaciones para el repartidor..."
+                icon="document-text-outline"
+                multiline
+                numberOfLines={3}
+              />
+
+              {/* Botones de Acción */}
+              <View style={styles.modalButtonsRow}>
+                <TouchableOpacity
+                  style={styles.cancelModalBtn}
+                  onPress={() => setIsEditModalVisible(false)}
+                >
+                  <Text style={styles.cancelModalBtnText}>Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.saveModalBtn}
+                  onPress={handleSaveEdit}
+                >
+                  <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                  <Text style={styles.saveModalBtnText}>Guardar Cambios</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -707,11 +888,38 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 12,
   },
+  customerInfoBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  customerAvatarMini: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+  },
+  customerAvatarB2B: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  customerAvatarB2C: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+  },
   customerName: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     color: COLORS.textPrimary,
-    marginBottom: 10,
+  },
+  customerSegmentSub: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginTop: 1,
   },
   contactActionsRow: {
     flexDirection: 'row',
@@ -1046,6 +1254,117 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     paddingHorizontal: 10,
     color: COLORS.textPrimary,
+  },
+  /* Edit Button & Modal */
+  editOrderBannerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: RADIUS.md,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginTop: 14,
+    gap: 8,
+  },
+  editOrderBannerText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.primary,
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    padding: 20,
+    maxHeight: '88%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  editSectionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    marginBottom: 8,
+  },
+  priorityEditRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  priorityEditPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: '#F8FAFC',
+    gap: 6,
+  },
+  priorityEditPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
+  modalButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+    paddingBottom: 20,
+  },
+  cancelModalBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1F5F9',
+  },
+  cancelModalBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
+  saveModalBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    paddingVertical: 14,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    elevation: 3,
+  },
+  saveModalBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });
 

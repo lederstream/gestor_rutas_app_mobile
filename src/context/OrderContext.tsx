@@ -29,8 +29,9 @@ import {
 } from './orderReducer';
 import { calculateOrderStatistics, calculateRouteLoad } from '../utils/formatters';
 import { getDynamicPriority } from '../utils/priorityHelper';
+import { INITIAL_ORDERS } from '../utils/mockData';
 
-const STORAGE_KEY = '@gestor_rutas_orders_v2';
+const STORAGE_KEY = '@gestor_rutas_orders_v3_tacna';
 
 export interface OrderContextType {
   state: OrderState;
@@ -43,6 +44,7 @@ export interface OrderContextType {
   // Actions
   addOrder: (order: Order) => void;
   updateOrder: (order: Order) => void;
+  changeStatus: (id: string, status: OrderStatus, deliveredAt?: string) => void;
   updateOrderStatus: (id: string, status: OrderStatus, deliveredAt?: string) => void;
   updateOrderLocation: (id: string, latitude: number, longitude: number) => void;
   loadDemoOrders: (demoOrders: Order[]) => void;
@@ -61,20 +63,24 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
   const [state, dispatch] = useReducer(orderReducer, initialOrderState);
   const isLoadedRef = useRef(false);
 
-  // 1. Load saved orders from AsyncStorage on startup
+  // 1. Cargar mockData inicial al montar la aplicación y sincronizar con memoria
   useEffect(() => {
     const loadSavedOrders = async () => {
       try {
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
         if (stored) {
           const parsed: Order[] = JSON.parse(stored);
-          dispatch({ type: 'SET_ORDERS', payload: parsed });
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            dispatch({ type: 'SET_ORDERS', payload: parsed });
+          } else {
+            dispatch({ type: 'SET_ORDERS', payload: INITIAL_ORDERS });
+          }
         } else {
-          dispatch({ type: 'SET_ORDERS', payload: [] });
+          dispatch({ type: 'SET_ORDERS', payload: INITIAL_ORDERS });
         }
       } catch (err) {
-        console.warn('Error loading orders from AsyncStorage', err);
-        dispatch({ type: 'SET_ORDERS', payload: [] });
+        console.warn('Error loading orders from storage, loading mockData', err);
+        dispatch({ type: 'SET_ORDERS', payload: INITIAL_ORDERS });
       } finally {
         isLoadedRef.current = true;
       }
@@ -175,10 +181,20 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
     dispatch({ type: 'UPDATE_ORDER', payload: order });
   }, []);
 
+  const changeStatus = useCallback(
+    (id: string, status: OrderStatus, deliveredAt?: string) => {
+      dispatch({
+        type: 'CHANGE_STATUS',
+        payload: { id, status, deliveredAt },
+      });
+    },
+    []
+  );
+
   const updateOrderStatus = useCallback(
     (id: string, status: OrderStatus, deliveredAt?: string) => {
       dispatch({
-        type: 'UPDATE_ORDER_STATUS',
+        type: 'CHANGE_STATUS',
         payload: { id, status, deliveredAt },
       });
     },
@@ -234,6 +250,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
       isLoading: state.isLoading,
       addOrder,
       updateOrder,
+      changeStatus,
       updateOrderStatus,
       updateOrderLocation,
       loadDemoOrders,
@@ -251,6 +268,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
       routeLoad,
       addOrder,
       updateOrder,
+      changeStatus,
       updateOrderStatus,
       updateOrderLocation,
       loadDemoOrders,

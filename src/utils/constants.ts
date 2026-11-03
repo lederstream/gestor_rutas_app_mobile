@@ -14,20 +14,20 @@ export const COLORS = {
   primaryLight: '#DBEAFE',
   secondary: '#0F172A',       // Slate 900 (Corporate Dark)
   accent: '#06B6D4',          // Cyan Modern
-  
+
   // Neutral Canvas & Surface
   background: '#F8FAFC',     // Light slate background
   surface: '#FFFFFF',        // Card background
   surfaceElevated: '#FFFFFF',
   border: '#E2E8F0',         // Subtle border
   borderFocus: '#94A3B8',
-  
+
   // Typography
   textPrimary: '#0F172A',
   textSecondary: '#64748B',
   textMuted: '#94A3B8',
   textInverse: '#FFFFFF',
-  
+
   // Status Colors
   statusPending: '#F59E0B',     // Amber
   statusPendingBg: '#FEF3C7',
@@ -119,7 +119,7 @@ export const PRIORITY_CONFIG: Record<
 };
 
 export const CATEGORY_CONFIG: Record<
-  ProductCategory,
+  string,
   { label: string; unitDefault: string; defaultPrice: number; icon: string; color: string; bg: string }
 > = {
   WATER: {
@@ -154,6 +154,60 @@ export const CATEGORY_CONFIG: Record<
     color: COLORS.categoryCleaning,
     bg: COLORS.categoryCleaningBg,
   },
+  FOOD: {
+    label: 'Alimentos y Bebidas',
+    unitDefault: 'Caja',
+    defaultPrice: 45.00,
+    icon: 'restaurant-outline',
+    color: COLORS.categoryBakery,
+    bg: COLORS.categoryBakeryBg,
+  },
+  PARCEL: {
+    label: 'Paquetería y Encomienda',
+    unitDefault: 'Paquete',
+    defaultPrice: 25.00,
+    icon: 'cube-outline',
+    color: COLORS.info,
+    bg: COLORS.statusInTransitBg,
+  },
+  SERVICES: {
+    label: 'Servicios Logísticos',
+    unitDefault: 'Servicio',
+    defaultPrice: 50.00,
+    icon: 'briefcase-outline',
+    color: COLORS.primary,
+    bg: COLORS.primaryLight,
+  },
+  GENERAL: {
+    label: 'Carga General',
+    unitDefault: 'Unidad',
+    defaultPrice: 30.00,
+    icon: 'cube-outline',
+    color: COLORS.secondary,
+    bg: '#F1F5F9',
+  },
+  OTHER: {
+    label: 'Varios',
+    unitDefault: 'Unidad',
+    defaultPrice: 20.00,
+    icon: 'ellipsis-horizontal-circle-outline',
+    color: COLORS.textSecondary,
+    bg: '#F1F5F9',
+  },
+};
+
+export const getCategoryConfig = (category?: string) => {
+  if (category && CATEGORY_CONFIG[category]) {
+    return CATEGORY_CONFIG[category];
+  }
+  return {
+    label: category || 'General',
+    unitDefault: 'Unidad',
+    defaultPrice: 25.0,
+    icon: 'cube-outline',
+    color: COLORS.primary,
+    bg: COLORS.primaryLight,
+  };
 };
 
 export const PAYMENT_METHOD_CONFIG: Record<
@@ -179,6 +233,11 @@ export const PAYMENT_METHOD_CONFIG: Record<
 };
 
 export const AVAILABLE_DISTRICTS = [
+  'Tacna (Cercado)',
+  'Coronel Gregorio Albarracín',
+  'Pocollay',
+  'Alto de la Alianza',
+  'Ciudad Nueva',
   'San Borja',
   'Santiago de Surco',
   'Miraflores',
@@ -192,13 +251,23 @@ export const AVAILABLE_DISTRICTS = [
 ];
 
 export const DEFAULT_DRIVERS = [
-  'Carlos Mendoza (Camión 02)',
+  'Carlos Mendoza (Camión 02 - Tacna)',
   'Jorge Luis Huamán (Furgón 05)',
   'Miguel Flores (Moto 01)',
   'Roberto Quispe (Camión 01)',
 ];
 
 export const DISTRICT_COORDINATES: Record<string, { latitude: number; longitude: number }> = {
+  // Distritos Principales - Tacna
+  'Tacna (Cercado)': { latitude: -18.0139, longitude: -70.2519 },
+  'Tacna': { latitude: -18.0139, longitude: -70.2519 },
+  'Coronel Gregorio Albarracín': { latitude: -18.0450, longitude: -70.2600 },
+  'Gregorio Albarracín': { latitude: -18.0450, longitude: -70.2600 },
+  'Pocollay': { latitude: -18.0050, longitude: -70.2300 },
+  'Alto de la Alianza': { latitude: -17.9980, longitude: -70.2520 },
+  'Ciudad Nueva': { latitude: -17.9920, longitude: -70.2450 },
+
+  // Lima Metropolitana
   'San Borja': { latitude: -12.0984, longitude: -77.0016 },
   'Santiago de Surco': { latitude: -12.1355, longitude: -76.9961 },
   'Miraflores': { latitude: -12.1192, longitude: -77.0298 },
