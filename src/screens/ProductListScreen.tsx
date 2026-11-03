@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/RootNavigator';
+import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductContext';
 import { Product } from '../models/Product';
 import { ProductCategory } from '../models/Order';
@@ -30,6 +31,8 @@ import { Header } from '../components/common/Header';
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductListScreen'>;
 
 export const ProductListScreen: React.FC<Props> = ({ navigation }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const { products, deleteProduct } = useProducts();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -143,21 +146,23 @@ export const ProductListScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.newOrderLinkText}>Generar Pedido</Text>
           </TouchableOpacity>
 
-          <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() => navigation.navigate('ProductFormScreen', { productId: item.id })}
-            >
-              <Ionicons name="pencil-outline" size={17} color={COLORS.textSecondary} />
-            </TouchableOpacity>
+          {isAdmin && (
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={() => navigation.navigate('ProductFormScreen', { productId: item.id })}
+              >
+                <Ionicons name="pencil-outline" size={17} color={COLORS.textSecondary} />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() => handleDelete(item)}
-            >
-              <Ionicons name="trash-outline" size={17} color={COLORS.danger} />
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={() => handleDelete(item)}
+              >
+                <Ionicons name="trash-outline" size={17} color={COLORS.danger} />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </View>
     );
@@ -171,8 +176,8 @@ export const ProductListScreen: React.FC<Props> = ({ navigation }) => {
         title="Mis Productos"
         showBackButton={true}
         onBackPress={() => navigation.goBack()}
-        rightActionIcon="add-circle"
-        onRightActionPress={() => navigation.navigate('ProductFormScreen')}
+        rightActionIcon={isAdmin ? "add-circle" : undefined}
+        onRightActionPress={isAdmin ? () => navigation.navigate('ProductFormScreen') : undefined}
       />
 
       {/* Barra de Búsqueda */}

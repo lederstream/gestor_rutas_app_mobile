@@ -27,12 +27,14 @@ import { CustomerListScreen } from '../screens/CustomerListScreen';
 import { CustomerFormScreen } from '../screens/CustomerFormScreen';
 import { ProductListScreen } from '../screens/ProductListScreen';
 import { ProductFormScreen } from '../screens/ProductFormScreen';
+import { ProfileScreen } from '../screens/ProfileScreen';
 import { COLORS } from '../utils/constants';
 
 export type RootStackParamList = {
   LoginScreen: undefined;
   ClientHomeScreen: undefined;
   WelcomeScreen: undefined;
+  ProfileScreen: undefined;
   OrderListScreen: undefined;
   CreateOrderScreen:
     | {
@@ -120,6 +122,7 @@ export const RootNavigator: React.FC = () => {
         }}
       >
         <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} />
+        <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
         <Stack.Screen name="CustomerListScreen" component={CustomerListScreen} />
         <Stack.Screen name="CustomerFormScreen" component={CustomerFormScreen} />
         <Stack.Screen name="ProductListScreen" component={ProductListScreen} />

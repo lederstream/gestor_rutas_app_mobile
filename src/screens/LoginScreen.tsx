@@ -84,8 +84,8 @@ export const LoginScreen: React.FC = () => {
 
     try {
       const coords = DISTRICT_COORDINATES[regDistrict] || {
-        latitude: -12.0984,
-        longitude: -77.0016,
+        latitude: -18.0139,
+        longitude: -70.2519,
       };
 
       // 1. Crear cliente en libreta de clientes

@@ -24,6 +24,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/RootNavigator';
+import { useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrderContext';
 import { OrderStatus, OrderPriority } from '../models/Order';
 import { isB2BCustomer } from '../models/Customer';
@@ -52,6 +53,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'OrderDetailScreen'>;
 
 export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { orderId } = route.params;
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const { getOrderById, updateOrderStatus, updateOrder, deleteOrder } = useOrders();
 
   const order = getOrderById(orderId);
@@ -272,8 +275,8 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         subtitle={`Creado el ${formatDateTime(order.createdAt)}`}
         showBackButton={true}
         onBackPress={() => navigation.goBack()}
-        rightActionIcon="trash-outline"
-        onRightActionPress={handleDeleteOrder}
+        rightActionIcon={isAdmin ? "trash-outline" : undefined}
+        onRightActionPress={isAdmin ? handleDeleteOrder : undefined}
       />
 
       <ScrollView
@@ -319,16 +322,18 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           )}
 
-          {/* Botón Destacado de Edición (Rúbrica: Detalle / Editar Solicitud) */}
-          <TouchableOpacity
-            style={styles.editOrderBannerBtn}
-            onPress={handleOpenEditModal}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="create-outline" size={16} color={COLORS.primary} />
-            <Text style={styles.editOrderBannerText}>Editar Solicitud</Text>
-            <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
-          </TouchableOpacity>
+          {/* Botón Destacado de Edición (Solo Administrador) */}
+          {isAdmin && (
+            <TouchableOpacity
+              style={styles.editOrderBannerBtn}
+              onPress={handleOpenEditModal}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="create-outline" size={16} color={COLORS.primary} />
+              <Text style={styles.editOrderBannerText}>Editar Solicitud</Text>
+              <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Customer Information Card */}

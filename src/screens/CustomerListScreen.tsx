@@ -21,6 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/RootNavigator';
+import { useAuth } from '../context/AuthContext';
 import { useCustomers } from '../context/CustomerContext';
 import { useOrders } from '../context/OrderContext';
 import { Customer, isB2BCustomer } from '../models/Customer';
@@ -30,6 +31,8 @@ import { Header } from '../components/common/Header';
 type Props = NativeStackScreenProps<RootStackParamList, 'CustomerListScreen'>;
 
 export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const { customers, deleteCustomer } = useCustomers();
   const { orders } = useOrders();
   const [searchQuery, setSearchQuery] = useState('');
@@ -167,21 +170,23 @@ export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           </View>
 
-          {/* Menú de acciones secundarias */}
-          <View style={styles.headerRightActions}>
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => navigation.navigate('CustomerFormScreen', { customerId: item.id })}
-            >
-              <Ionicons name="pencil-outline" size={18} color={COLORS.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => handleDelete(item)}
-            >
-              <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
-            </TouchableOpacity>
-          </View>
+          {/* Menú de acciones secundarias (Edición y eliminación solo Admin) */}
+          {isAdmin && (
+            <View style={styles.headerRightActions}>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => navigation.navigate('CustomerFormScreen', { customerId: item.id })}
+              >
+                <Ionicons name="pencil-outline" size={18} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => handleDelete(item)}
+              >
+                <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Dirección y Referencia */}
@@ -289,13 +294,15 @@ export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
             {filteredCustomers.length}{' '}
             {filteredCustomers.length === 1 ? 'cliente encontrado' : 'clientes registrados'}
           </Text>
-          <TouchableOpacity
-            style={styles.addBtnQuick}
-            onPress={() => navigation.navigate('CustomerFormScreen')}
-          >
-            <Ionicons name="add" size={16} color={COLORS.primary} />
-            <Text style={styles.addBtnQuickText}>Nuevo</Text>
-          </TouchableOpacity>
+          {isAdmin && (
+            <TouchableOpacity
+              style={styles.addBtnQuick}
+              onPress={() => navigation.navigate('CustomerFormScreen')}
+            >
+              <Ionicons name="add" size={16} color={COLORS.primary} />
+              <Text style={styles.addBtnQuickText}>Nuevo</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
