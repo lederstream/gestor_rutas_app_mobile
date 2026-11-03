@@ -27,6 +27,7 @@ import { useOrders } from '../context/OrderContext';
 import { Customer, isB2BCustomer } from '../models/Customer';
 import { COLORS } from '../utils/constants';
 import { Header } from '../components/common/Header';
+import { FloatingBottomDock } from '../components/common/FloatingBottomDock';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CustomerListScreen'>;
 
@@ -336,6 +337,9 @@ export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         }
       />
+
+      {/* Floating Dock - Burbujas Flotantes de Navegación */}
+      <FloatingBottomDock activeTab="CUSTOMERS" navigation={navigation} />
     </SafeAreaView>
   );
 };
@@ -394,7 +398,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    paddingBottom: 36,
+    paddingBottom: 95,
   },
   card: {
     backgroundColor: COLORS.surface,

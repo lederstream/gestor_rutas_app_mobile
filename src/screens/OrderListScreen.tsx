@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/RootNavigator';
+import { useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrderContext';
 import { OrderStatus } from '../models/Order';
 import { COLORS, SPACING, RADIUS, TOUCH_TARGET } from '../utils/constants';
@@ -29,10 +30,13 @@ import { Header } from '../components/common/Header';
 import { CustomInput } from '../components/common/CustomInput';
 import { OrderCard } from '../components/orders/OrderCard';
 import { OrderFilterBar } from '../components/orders/OrderFilterBar';
+import { FloatingBottomDock } from '../components/common/FloatingBottomDock';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OrderListScreen'>;
 
 export const OrderListScreen: React.FC<Props> = ({ navigation }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const {
     orders,
     filteredOrders,
@@ -222,18 +226,23 @@ export const OrderListScreen: React.FC<Props> = ({ navigation }) => {
         removeClippedSubviews={true}
       />
 
-      {/* Botón Flotante para Generar Pedido (FAB) */}
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.88}
-        onPress={() => {
-          hapticImpact('medium');
-          navigation.navigate('CreateOrderScreen');
-        }}
-      >
-        <Ionicons name="add" size={24} color="#FFFFFF" />
-        <Text style={styles.fabText}>Nuevo Pedido</Text>
-      </TouchableOpacity>
+      {/* Botón Flotante para Generar Pedido (FAB Solo Admin) */}
+      {isAdmin && (
+        <TouchableOpacity
+          style={styles.fab}
+          activeOpacity={0.88}
+          onPress={() => {
+            hapticImpact('medium');
+            navigation.navigate('CreateOrderScreen');
+          }}
+        >
+          <Ionicons name="add" size={24} color="#FFFFFF" />
+          <Text style={styles.fabText}>Nuevo Pedido</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Floating Dock - Burbujas Flotantes de Navegación */}
+      <FloatingBottomDock activeTab="ORDERS" navigation={navigation} />
     </SafeAreaView>
   );
 };
@@ -328,7 +337,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 84,
     right: 20,
     backgroundColor: COLORS.primary,
     borderRadius: RADIUS.full,

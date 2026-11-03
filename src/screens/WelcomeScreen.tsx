@@ -27,6 +27,7 @@ import { useProducts } from '../context/ProductContext';
 import { COLORS, SPACING, RADIUS, TOUCH_TARGET } from '../utils/constants';
 import { formatCurrency } from '../utils/formatters';
 import { hapticImpact, hapticSelection } from '../utils/haptics';
+import { FloatingBottomDock } from '../components/common/FloatingBottomDock';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WelcomeScreen'>;
 
@@ -386,6 +387,9 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
           )}
         </View>
       </ScrollView>
+
+      {/* Floating Dock - Burbujas Flotantes de Navegación */}
+      <FloatingBottomDock activeTab="HOME" navigation={navigation} />
     </SafeAreaView>
   );
 };
@@ -396,7 +400,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   scrollContent: {
-    paddingBottom: 32,
+    paddingBottom: 95,
   },
   topHeader: {
     backgroundColor: COLORS.surface,

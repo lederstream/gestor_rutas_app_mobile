@@ -27,6 +27,7 @@ import { ProductCategory } from '../models/Order';
 import { COLORS, CATEGORY_CONFIG } from '../utils/constants';
 import { formatCurrency } from '../utils/formatters';
 import { Header } from '../components/common/Header';
+import { FloatingBottomDock } from '../components/common/FloatingBottomDock';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductListScreen'>;
 
@@ -232,13 +233,15 @@ export const ProductListScreen: React.FC<Props> = ({ navigation }) => {
             {filteredProducts.length}{' '}
             {filteredProducts.length === 1 ? 'producto en catálogo' : 'productos en catálogo'}
           </Text>
-          <TouchableOpacity
-            style={styles.addBtnQuick}
-            onPress={() => navigation.navigate('ProductFormScreen')}
-          >
-            <Ionicons name="add" size={16} color={COLORS.primary} />
-            <Text style={styles.addBtnQuickText}>Nuevo Producto</Text>
-          </TouchableOpacity>
+          {isAdmin && (
+            <TouchableOpacity
+              style={styles.addBtnQuick}
+              onPress={() => navigation.navigate('ProductFormScreen')}
+            >
+              <Ionicons name="add" size={16} color={COLORS.primary} />
+              <Text style={styles.addBtnQuickText}>Nuevo Producto</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -272,6 +275,9 @@ export const ProductListScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         }
       />
+
+      {/* Floating Dock - Burbujas Flotantes de Navegación */}
+      <FloatingBottomDock activeTab="PRODUCTS" navigation={navigation} />
     </SafeAreaView>
   );
 };
@@ -355,7 +361,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    paddingBottom: 36,
+    paddingBottom: 95,
   },
   card: {
     backgroundColor: COLORS.surface,

@@ -1,8 +1,8 @@
 /**
  * ============================================================================
  * SCREEN: ProfileScreen.tsx
- * Pantalla Dedicada "Mi Perfil" con Información de Cuenta, Rol (RBAC) y Cierre de Sesión
- * Sigue las Mejores Prácticas de UX Móvil (Uber Driver, Mercado Envíos, Rappi)
+ * Gestión Integral de Perfil con CRUD Completo (Create, Read, Update, Reset)
+ * UX Móvil Limpia y Ergonómica sin Saturaciones de Texto
  * ============================================================================
  */
 
@@ -15,6 +15,10 @@ import {
   TouchableOpacity,
   StatusBar,
   Modal,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -26,25 +30,117 @@ import { useCustomers } from '../context/CustomerContext';
 import { useProducts } from '../context/ProductContext';
 import { COLORS, SPACING, RADIUS, TOUCH_TARGET } from '../utils/constants';
 import { formatCurrency } from '../utils/formatters';
-import { hapticImpact } from '../utils/haptics';
+import { hapticImpact, hapticNotification, hapticSelection } from '../utils/haptics';
 import { Header } from '../components/common/Header';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProfileScreen'>;
 
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile, updatePassword, resetToInitialProfile } = useAuth();
   const { orders, statistics } = useOrders();
   const { customers } = useCustomers();
   const { products } = useProducts();
 
+  // Estados de Modales
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
   const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
+
+  // Estados de Formulario de Edición de Perfil
+  const [editName, setEditName] = useState(user?.name || '');
+  const [editPhone, setEditPhone] = useState(user?.phone || '');
+  const [editEmail, setEditEmail] = useState(user?.email || '');
+  const [editVehicleInfo, setEditVehicleInfo] = useState(user?.vehicleInfo || '');
+  const [editDriverCode, setEditDriverCode] = useState(user?.driverCode || '');
+
+  // Estados de Cambio de Contraseña
+  const [currentPass, setCurrentPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
 
   const isAdmin = user?.role === 'ADMIN';
   const isDistributor = user?.role === 'DISTRIBUTOR';
 
-  const handleOpenLogout = () => {
+  const handleOpenEditModal = () => {
     hapticImpact('light');
-    setIsLogoutModalVisible(true);
+    setEditName(user?.name || '');
+    setEditPhone(user?.phone || '');
+    setEditEmail(user?.email || '');
+    setEditVehicleInfo(user?.vehicleInfo || '');
+    setEditDriverCode(user?.driverCode || '');
+    setIsEditModalVisible(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
+      Alert.alert('Nombre Requerido', 'Por favor ingresa tu nombre completo.');
+      return;
+    }
+    if (!editPhone.trim()) {
+      Alert.alert('Teléfono Requerido', 'El número de teléfono o celular es obligatorio.');
+      return;
+    }
+
+    const res = await updateProfile({
+      name: editName,
+      phone: editPhone,
+      email: editEmail,
+      vehicleInfo: isDistributor ? editVehicleInfo : undefined,
+      driverCode: isDistributor ? editDriverCode : undefined,
+    });
+
+    if (res.success) {
+      setIsEditModalVisible(false);
+      Alert.alert('Perfil Actualizado 🎉', 'Tus datos fueron guardados y sincronizados en memoria.');
+    } else {
+      Alert.alert('Error', res.error || 'No se pudieron guardar los cambios.');
+    }
+  };
+
+  const handleOpenPasswordModal = () => {
+    hapticImpact('light');
+    setCurrentPass('');
+    setNewPass('');
+    setConfirmPass('');
+    setIsPasswordModalVisible(true);
+  };
+
+  const handleSavePassword = async () => {
+    if (!currentPass.trim() || !newPass.trim()) {
+      Alert.alert('Campos Incompletos', 'Ingresa la contraseña actual y la nueva contraseña.');
+      return;
+    }
+    if (newPass !== confirmPass) {
+      Alert.alert('Validación', 'La nueva contraseña y su confirmación no coinciden.');
+      return;
+    }
+
+    const res = await updatePassword(currentPass, newPass);
+    if (res.success) {
+      setIsPasswordModalVisible(false);
+      Alert.alert('Contraseña Actualizada 🔒', 'Tu nueva clave de acceso ya está activa.');
+    } else {
+      Alert.alert('Error', res.error || 'Contraseña incorrecta.');
+    }
+  };
+
+  const handleResetProfile = () => {
+    Alert.alert(
+      'Restablecer Datos de Cuenta',
+      '¿Deseas restaurar la información predeterminada del usuario asignada por el sistema?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sí, Restablecer',
+          style: 'destructive',
+          onPress: async () => {
+            hapticImpact('heavy');
+            await resetToInitialProfile();
+            Alert.alert('Restablecido', 'Los datos iniciales fueron restablecidos con éxito.');
+          },
+        },
+      ]
+    );
   };
 
   const handleConfirmLogout = async () => {
@@ -61,6 +157,8 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         subtitle="Datos de cuenta y configuración"
         showBackButton={true}
         onBackPress={() => navigation.goBack()}
+        rightActionIcon="create-outline"
+        onRightActionPress={handleOpenEditModal}
       />
 
       <ScrollView
@@ -68,7 +166,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {/* ================================================================= */}
-        {/* TARJETA DE IDENTIFICACIÓN DE USUARIO */}
+        {/* TARJETA DE IDENTIFICACIÓN CON BOTÓN DE EDICIÓN RÁPIDA */}
         {/* ================================================================= */}
         <View style={styles.userCard}>
           <View style={[styles.avatarBox, isAdmin ? styles.avatarAdmin : styles.avatarDist]}>
@@ -104,13 +202,28 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
                 : 'CLIENTE'}
             </Text>
           </View>
+
+          {/* Botón Táctil de Edición Rápida (CRUD - Update) */}
+          <TouchableOpacity
+            style={styles.editProfileBtn}
+            onPress={handleOpenEditModal}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="pencil" size={14} color={COLORS.primary} />
+            <Text style={styles.editProfileBtnText}>Editar Datos</Text>
+          </TouchableOpacity>
         </View>
 
         {/* ================================================================= */}
-        {/* INFORMACIÓN DE CONTACTO Y CREDENCIALES */}
+        {/* INFORMACIÓN DE CONTACTO */}
         {/* ================================================================= */}
         <View style={styles.card}>
-          <Text style={styles.cardHeaderTitle}>Información de Contacto</Text>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardHeaderTitle}>Información de Contacto</Text>
+            <TouchableOpacity onPress={handleOpenEditModal} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.cardHeaderAction}>Modificar</Text>
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.infoRow}>
             <View style={styles.iconSquare}>
@@ -129,7 +242,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
               <Ionicons name="call-outline" size={18} color={COLORS.primary} />
             </View>
             <View style={styles.infoCol}>
-              <Text style={styles.infoLabel}>Teléfono Móvil</Text>
+              <Text style={styles.infoLabel}>Teléfono de Contacto</Text>
               <Text style={styles.infoValue}>{user?.phone || 'No registrado'}</Text>
             </View>
           </View>
@@ -141,26 +254,31 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
               <Ionicons name="location-outline" size={18} color={COLORS.primary} />
             </View>
             <View style={styles.infoCol}>
-              <Text style={styles.infoLabel}>Ciudad de Operaciones</Text>
-              <Text style={styles.infoValue}>Tacna, Perú (Centro & Cono Sur/Norte)</Text>
+              <Text style={styles.infoLabel}>Zona Operativa</Text>
+              <Text style={styles.infoValue}>Tacna, Perú (Centro, Cono Sur y Norte)</Text>
             </View>
           </View>
         </View>
 
         {/* ================================================================= */}
-        {/* DATOS OPERATIVOS DEL DISTRIBUIDOR (VEHÍCULO Y RENDIMIENTO) */}
+        {/* FICHA OPERATIVA DEL DISTRIBUIDOR */}
         {/* ================================================================= */}
         {isDistributor && (
           <>
             <View style={styles.card}>
-              <Text style={styles.cardHeaderTitle}>Unidad de Transporte Asignada</Text>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.cardHeaderTitle}>Unidad Asignada</Text>
+                <TouchableOpacity onPress={handleOpenEditModal}>
+                  <Text style={styles.cardHeaderAction}>Cambiar</Text>
+                </TouchableOpacity>
+              </View>
 
               <View style={styles.infoRow}>
                 <View style={[styles.iconSquare, { backgroundColor: '#F0FDF4' }]}>
                   <Ionicons name="car-outline" size={18} color={COLORS.success} />
                 </View>
                 <View style={styles.infoCol}>
-                  <Text style={styles.infoLabel}>Vehículo Asignado</Text>
+                  <Text style={styles.infoLabel}>Vehículo / Placa</Text>
                   <Text style={styles.infoValue}>
                     {user?.vehicleInfo || 'Camión 02 (Placa BZ-492)'}
                   </Text>
@@ -181,7 +299,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.cardHeaderTitle}>Tu Rendimiento en Ruta (Hoy)</Text>
+              <Text style={styles.cardHeaderTitle}>Rendimiento de Hoy</Text>
 
               <View style={styles.statsGrid}>
                 <View style={styles.statBox}>
@@ -200,7 +318,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
                   <Text style={[styles.statNumber, { color: COLORS.primary }]}>
                     {formatCurrency(statistics.totalRevenue)}
                   </Text>
-                  <Text style={styles.statLabel}>Cobrado Hoy</Text>
+                  <Text style={styles.statLabel}>Recaudado</Text>
                 </View>
               </View>
             </View>
@@ -208,11 +326,11 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         )}
 
         {/* ================================================================= */}
-        {/* DATOS GERENCIALES DEL ADMINISTRADOR */}
+        {/* RESUMEN ADMINISTRATIVO */}
         {/* ================================================================= */}
         {isAdmin && (
           <View style={styles.card}>
-            <Text style={styles.cardHeaderTitle}>Supervisión del Negocio (Global)</Text>
+            <Text style={styles.cardHeaderTitle}>Supervisión General</Text>
 
             <View style={styles.statsGrid}>
               <View style={styles.statBox}>
@@ -234,38 +352,48 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.statLabel}>Productos</Text>
               </View>
             </View>
-
-            <View style={styles.adminPrivilegeBox}>
-              <Ionicons name="key-outline" size={16} color="#6B21A8" />
-              <Text style={styles.adminPrivilegeText}>
-                Tienes permisos maestros para crear, editar y eliminar pedidos, clientes y catálogo de productos.
-              </Text>
-            </View>
           </View>
         )}
 
         {/* ================================================================= */}
-        {/* INFORMACIÓN DEL SISTEMA Y TECNOLOGÍA */}
+        {/* ACCIONES DE SEGURIDAD Y CONFIGURACIÓN (CRUD) */}
         {/* ================================================================= */}
         <View style={styles.card}>
-          <Text style={styles.cardHeaderTitle}>Sistema y Cumplimiento</Text>
+          <Text style={styles.cardHeaderTitle}>Seguridad y Opciones de Cuenta</Text>
 
-          <View style={styles.systemRow}>
-            <Text style={styles.systemLabel}>App:</Text>
-            <Text style={styles.systemValue}>Gestor de Rutas Móvil (Tacna)</Text>
-          </View>
-          <View style={styles.systemRow}>
-            <Text style={styles.systemLabel}>Arquitectura:</Text>
-            <Text style={styles.systemValue}>Offline-First (Context API + AsyncStorage)</Text>
-          </View>
-          <View style={styles.systemRow}>
-            <Text style={styles.systemLabel}>Cartografía:</Text>
-            <Text style={styles.systemValue}>Leaflet + Esri World Street (100% Free)</Text>
-          </View>
-          <View style={styles.systemRow}>
-            <Text style={styles.systemLabel}>Evaluación:</Text>
-            <Text style={styles.systemValue}>Rúbrica IDAT 20/20</Text>
-          </View>
+          {/* Cambiar Contraseña */}
+          <TouchableOpacity
+            style={styles.actionRowBtn}
+            onPress={handleOpenPasswordModal}
+            activeOpacity={0.7}
+          >
+            <View style={styles.actionRowIcon}>
+              <Ionicons name="key-outline" size={18} color={COLORS.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.actionRowTitle}>Cambiar Contraseña / PIN</Text>
+              <Text style={styles.actionRowSub}>Actualizar clave de acceso seguro</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+          </TouchableOpacity>
+
+          <View style={styles.infoDivider} />
+
+          {/* Restablecer Valores Iniciales (CRUD - Reset) */}
+          <TouchableOpacity
+            style={styles.actionRowBtn}
+            onPress={handleResetProfile}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.actionRowIcon, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="refresh-outline" size={18} color="#D97706" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.actionRowTitle}>Restablecer Valores de Fábrica</Text>
+              <Text style={styles.actionRowSub}>Revertir cambios del usuario al valor inicial</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+          </TouchableOpacity>
         </View>
 
         {/* ================================================================= */}
@@ -273,7 +401,10 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         {/* ================================================================= */}
         <TouchableOpacity
           style={styles.logoutButton}
-          onPress={handleOpenLogout}
+          onPress={() => {
+            hapticImpact('light');
+            setIsLogoutModalVisible(true);
+          }}
           activeOpacity={0.85}
         >
           <Ionicons name="log-out-outline" size={20} color="#DC2626" />
@@ -281,7 +412,183 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Modal Seguro de Confirmación de Cierre de Sesión */}
+      {/* ================================================================= */}
+      {/* MODAL 1: EDITAR DATOS DE PERFIL (CRUD - UPDATE) */}
+      {/* ================================================================= */}
+      <Modal
+        visible={isEditModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsEditModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalBackdrop}
+        >
+          <View style={styles.modalCardLarge}>
+            <View style={styles.modalHeaderRow}>
+              <View>
+                <Text style={styles.modalTitle}>Editar Mi Perfil</Text>
+                <Text style={styles.modalSubtitle}>Actualiza tus datos de contacto y unidad</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsEditModalVisible(false)}>
+                <Ionicons name="close-circle" size={24} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+              {/* Nombre Completo */}
+              <Text style={styles.inputLabel}>Nombre Completo</Text>
+              <TextInput
+                style={styles.textInput}
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Ej. Carlos Mendoza"
+                placeholderTextColor={COLORS.textMuted}
+              />
+
+              {/* Teléfono */}
+              <Text style={styles.inputLabel}>Teléfono / WhatsApp de Contacto</Text>
+              <TextInput
+                style={styles.textInput}
+                value={editPhone}
+                onChangeText={setEditPhone}
+                placeholder="Ej. 987111222"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="phone-pad"
+              />
+
+              {/* Correo Electrónico */}
+              <Text style={styles.inputLabel}>Correo Electrónico</Text>
+              <TextInput
+                style={styles.textInput}
+                value={editEmail}
+                onChangeText={setEditEmail}
+                placeholder="Ej. carlos@distribucion.com"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+
+              {/* Datos exclusivos de Chofer */}
+              {isDistributor && (
+                <>
+                  <Text style={styles.inputLabel}>Vehículo Asignado y Placa</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={editVehicleInfo}
+                    onChangeText={setEditVehicleInfo}
+                    placeholder="Ej. Camión 02 (Placa BZ-492)"
+                    placeholderTextColor={COLORS.textMuted}
+                  />
+
+                  <Text style={styles.inputLabel}>Código de Chofer</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={editDriverCode}
+                    onChangeText={setEditDriverCode}
+                    placeholder="Ej. CHO-02"
+                    placeholderTextColor={COLORS.textMuted}
+                  />
+                </>
+              )}
+            </ScrollView>
+
+            <View style={styles.modalActionsRow}>
+              <TouchableOpacity
+                style={styles.cancelModalBtn}
+                onPress={() => setIsEditModalVisible(false)}
+              >
+                <Text style={styles.cancelModalBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.saveModalBtn}
+                onPress={handleSaveProfile}
+              >
+                <Text style={styles.saveModalBtnText}>Guardar Cambios</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ================================================================= */}
+      {/* MODAL 2: CAMBIAR CONTRASEÑA / PIN */}
+      {/* ================================================================= */}
+      <Modal
+        visible={isPasswordModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsPasswordModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalBackdrop}
+        >
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeaderRow}>
+              <View>
+                <Text style={styles.modalTitle}>Cambiar Contraseña</Text>
+                <Text style={styles.modalSubtitle}>Clave de acceso seguro al sistema</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsPasswordModalVisible(false)}>
+                <Ionicons name="close-circle" size={24} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.inputLabel}>Contraseña Actual</Text>
+            <TextInput
+              style={styles.textInput}
+              value={currentPass}
+              onChangeText={setCurrentPass}
+              placeholder="Ingresa tu contraseña actual"
+              placeholderTextColor={COLORS.textMuted}
+              secureTextEntry={true}
+            />
+
+            <Text style={styles.inputLabel}>Nueva Contraseña</Text>
+            <TextInput
+              style={styles.textInput}
+              value={newPass}
+              onChangeText={setNewPass}
+              placeholder="Mínimo 3 caracteres"
+              placeholderTextColor={COLORS.textMuted}
+              secureTextEntry={true}
+            />
+
+            <Text style={styles.inputLabel}>Confirmar Nueva Contraseña</Text>
+            <TextInput
+              style={styles.textInput}
+              value={confirmPass}
+              onChangeText={setConfirmPass}
+              placeholder="Vuelve a escribir la nueva clave"
+              placeholderTextColor={COLORS.textMuted}
+              secureTextEntry={true}
+            />
+
+            <View style={styles.modalActionsRow}>
+              <TouchableOpacity
+                style={styles.cancelModalBtn}
+                onPress={() => setIsPasswordModalVisible(false)}
+              >
+                <Text style={styles.cancelModalBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.saveModalBtn}
+                onPress={handleSavePassword}
+              >
+                <Text style={styles.saveModalBtnText}>Actualizar Clave</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ================================================================= */}
+      {/* MODAL 3: CONFIRMACIÓN DE CIERRE DE SESIÓN */}
+      {/* ================================================================= */}
       <Modal
         visible={isLogoutModalVisible}
         transparent={true}
@@ -298,21 +605,19 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
               Saldrás de la cuenta de {user?.name || 'usuario'}. Para volver a acceder deberás ingresar tus credenciales.
             </Text>
 
-            <View style={styles.logoutModalBtnRow}>
+            <View style={styles.modalActionsRow}>
               <TouchableOpacity
-                style={styles.logoutCancelBtn}
+                style={styles.cancelModalBtn}
                 onPress={() => setIsLogoutModalVisible(false)}
-                activeOpacity={0.8}
               >
-                <Text style={styles.logoutCancelText}>Cancelar</Text>
+                <Text style={styles.cancelModalBtnText}>Cancelar</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.logoutConfirmBtn}
+                style={[styles.saveModalBtn, { backgroundColor: COLORS.danger }]}
                 onPress={handleConfirmLogout}
-                activeOpacity={0.85}
               >
-                <Text style={styles.logoutConfirmText}>Sí, Salir</Text>
+                <Text style={styles.saveModalBtnText}>Sí, Salir</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -371,7 +676,7 @@ const styles = StyleSheet.create({
   userUsername: {
     fontSize: 13,
     color: COLORS.textSecondary,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   roleBadge: {
     flexDirection: 'row',
@@ -380,6 +685,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: RADIUS.full,
+    marginBottom: 12,
   },
   roleBadgeAdmin: {
     backgroundColor: '#F3E8FF',
@@ -388,7 +694,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0F2FE',
   },
   roleBadgeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
@@ -398,6 +704,22 @@ const styles = StyleSheet.create({
   roleBadgeTextDist: {
     color: '#0369A1',
   },
+  editProfileBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  editProfileBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
@@ -406,11 +728,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  cardHeaderTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: SPACING.md,
+  },
+  cardHeaderTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  cardHeaderAction: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
   infoRow: {
     flexDirection: 'row',
@@ -429,7 +761,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.textSecondary,
     marginBottom: 2,
   },
@@ -446,6 +778,7 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     gap: SPACING.sm,
+    marginTop: 6,
   },
   statBox: {
     flex: 1,
@@ -457,8 +790,8 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   statNumber: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 17,
+    fontWeight: '900',
     color: COLORS.textPrimary,
   },
   statLabel: {
@@ -467,36 +800,29 @@ const styles = StyleSheet.create({
     marginTop: 2,
     textAlign: 'center',
   },
-  adminPrivilegeBox: {
+  actionRowBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#FAF5FF',
-    borderRadius: RADIUS.sm,
-    padding: SPACING.sm,
-    marginTop: SPACING.md,
-    borderWidth: 1,
-    borderColor: '#E9D5FF',
+    gap: 12,
+    paddingVertical: 4,
   },
-  adminPrivilegeText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#6B21A8',
-    lineHeight: 16,
+  actionRowIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  systemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 5,
-  },
-  systemLabel: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-  },
-  systemValue: {
-    fontSize: 13,
-    fontWeight: '600',
+  actionRowTitle: {
+    fontSize: 14,
+    fontWeight: '700',
     color: COLORS.textPrimary,
+  },
+  actionRowSub: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 1,
   },
   logoutButton: {
     flexDirection: 'row',
@@ -515,12 +841,91 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#DC2626',
   },
+  /* Modal Styles */
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: SPACING.lg,
+  },
+  modalCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    width: '100%',
+    maxWidth: 360,
+  },
+  modalCardLarge: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    width: '100%',
+    maxWidth: 380,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.md,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  textInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: COLORS.textPrimary,
+  },
+  modalActionsRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginTop: SPACING.lg,
+  },
+  cancelModalBtn: {
+    flex: 1,
+    height: 44,
+    backgroundColor: '#F1F5F9',
+    borderRadius: RADIUS.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelModalBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  saveModalBtn: {
+    flex: 1.3,
+    height: 44,
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveModalBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   logoutModalCard: {
     backgroundColor: COLORS.surface,
@@ -531,9 +936,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoutModalIconBox: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#FEE2E2',
     alignItems: 'center',
     justifyContent: 'center',
@@ -550,37 +955,6 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 18,
-    marginBottom: SPACING.lg,
-  },
-  logoutModalBtnRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    width: '100%',
-  },
-  logoutCancelBtn: {
-    flex: 1,
-    backgroundColor: '#F1F5F9',
-    borderRadius: RADIUS.sm,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoutCancelText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  logoutConfirmBtn: {
-    flex: 1,
-    backgroundColor: COLORS.danger,
-    borderRadius: RADIUS.sm,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoutConfirmText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    marginBottom: SPACING.md,
   },
 });

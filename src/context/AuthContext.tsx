@@ -29,6 +29,9 @@ export interface AuthContextType {
   login: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   registerUser: (newAccount: UserAccount) => Promise<boolean>;
+  updateProfile: (updatedData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  resetToInitialProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -160,6 +163,134 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     [accounts]
   );
 
+  // 5. Actualización completa de datos de Perfil (CRUD - Update)
+  const updateProfile = useCallback(
+    async (updatedData: Partial<User>): Promise<{ success: boolean; error?: string }> => {
+      if (!user) {
+        return { success: false, error: 'No hay una sesión activa.' };
+      }
+
+      if (updatedData.name !== undefined && !updatedData.name.trim()) {
+        hapticNotification('error');
+        return { success: false, error: 'El nombre completo no puede quedar vacío.' };
+      }
+
+      if (updatedData.phone !== undefined && !updatedData.phone.trim()) {
+        hapticNotification('error');
+        return { success: false, error: 'El número de teléfono es obligatorio para la operación.' };
+      }
+
+      try {
+        const newProfile: User = {
+          ...user,
+          ...updatedData,
+          name: updatedData.name !== undefined ? updatedData.name.trim() : user.name,
+          phone: updatedData.phone !== undefined ? updatedData.phone.trim() : user.phone,
+          email: updatedData.email !== undefined ? updatedData.email.trim() : user.email,
+          vehicleInfo: updatedData.vehicleInfo !== undefined ? updatedData.vehicleInfo.trim() : user.vehicleInfo,
+          driverCode: updatedData.driverCode !== undefined ? updatedData.driverCode.trim() : user.driverCode,
+        };
+
+        // Actualizar sesión activa
+        setUser(newProfile);
+        await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newProfile));
+
+        // Sincronizar en la lista persistente de cuentas registradas
+        const updatedAccounts = accounts.map((acc) => {
+          if (acc.id === user.id || acc.username.toLowerCase() === user.username.toLowerCase()) {
+            return {
+              ...acc,
+              ...newProfile,
+            };
+          }
+          return acc;
+        });
+
+        setAccounts(updatedAccounts);
+        await AsyncStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(updatedAccounts));
+
+        hapticNotification('success');
+        return { success: true };
+      } catch (err) {
+        console.warn('Error al actualizar perfil:', err);
+        hapticNotification('error');
+        return { success: false, error: 'Ocurrió un error al guardar los cambios en memoria.' };
+      }
+    },
+    [user, accounts]
+  );
+
+  // 6. Actualización segura de Contraseña
+  const updatePassword = useCallback(
+    async (
+      currentPassword: string,
+      newPassword: string
+    ): Promise<{ success: boolean; error?: string }> => {
+      if (!user) {
+        return { success: false, error: 'No hay una sesión activa.' };
+      }
+
+      const cleanCurrent = currentPassword.trim();
+      const cleanNew = newPassword.trim();
+
+      if (!cleanCurrent || !cleanNew) {
+        hapticNotification('error');
+        return { success: false, error: 'Ingresa tanto la clave actual como la nueva clave.' };
+      }
+
+      if (cleanNew.length < 3) {
+        hapticNotification('error');
+        return { success: false, error: 'La nueva contraseña debe tener al menos 3 caracteres.' };
+      }
+
+      const currentAcc = accounts.find(
+        (acc) => acc.id === user.id || acc.username.toLowerCase() === user.username.toLowerCase()
+      );
+
+      if (!currentAcc || currentAcc.password !== cleanCurrent) {
+        hapticNotification('error');
+        return { success: false, error: 'La contraseña actual no es correcta.' };
+      }
+
+      try {
+        const updatedAccounts = accounts.map((acc) => {
+          if (acc.id === user.id || acc.username.toLowerCase() === user.username.toLowerCase()) {
+            return {
+              ...acc,
+              password: cleanNew,
+            };
+          }
+          return acc;
+        });
+
+        setAccounts(updatedAccounts);
+        await AsyncStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(updatedAccounts));
+
+        hapticNotification('success');
+        return { success: true };
+      } catch (err) {
+        console.warn('Error al actualizar contraseña:', err);
+        hapticNotification('error');
+        return { success: false, error: 'No se pudo guardar la nueva contraseña.' };
+      }
+    },
+    [user, accounts]
+  );
+
+  // 7. Restablecer datos iniciales del usuario
+  const resetToInitialProfile = useCallback(async () => {
+    if (!user) return;
+    const initialAcc = REGISTERED_ACCOUNTS.find(
+      (acc) => acc.username.toLowerCase() === user.username.toLowerCase()
+    );
+    if (initialAcc) {
+      const { password: _, ...cleanProfile } = initialAcc;
+      setUser(cleanProfile);
+      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(cleanProfile));
+      hapticNotification('success');
+    }
+  }, [user]);
+
   const value = useMemo(
     () => ({
       user,
@@ -170,8 +301,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       login,
       logout,
       registerUser,
+      updateProfile,
+      updatePassword,
+      resetToInitialProfile,
     }),
-    [user, isLoading, accounts, login, logout, registerUser]
+    [
+      user,
+      isLoading,
+      accounts,
+      login,
+      logout,
+      registerUser,
+      updateProfile,
+      updatePassword,
+      resetToInitialProfile,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
