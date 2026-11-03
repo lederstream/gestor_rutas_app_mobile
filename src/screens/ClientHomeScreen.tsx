@@ -2,7 +2,7 @@
  * ============================================================================
  * SCREEN: ClientHomeScreen.tsx
  * Portal Exclusivo del Cliente: Pedidos Rápidos en 1 Toque y Rastreo de Entrega
- * Diseñado para Máxima Sencillez (Cero Curva de Aprendizaje)
+ * Diseñado con Neuromarketing, Armonía Visual y Ergonomía Móvil
  * ============================================================================
  */
 
@@ -29,22 +29,14 @@ import { COLORS, SPACING, RADIUS, TOUCH_TARGET } from '../utils/constants';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
 import { hapticImpact, hapticNotification, hapticSelection } from '../utils/haptics';
 
-export const ClientHomeScreen: React.FC = () => {
-  const { user, logout } = useAuth();
+interface Props {
+  navigation: any;
+}
+
+export const ClientHomeScreen: React.FC<Props> = ({ navigation }) => {
+  const { user } = useAuth();
   const { orders, addOrder } = useOrders();
   const { products } = useProducts();
-
-  const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
-
-  const handleOpenLogout = () => {
-    hapticImpact('light');
-    setIsLogoutModalVisible(true);
-  };
-
-  const handleConfirmLogout = async () => {
-    setIsLogoutModalVisible(false);
-    await logout();
-  };
 
   // Modal para confirmar pedido rápido
   const [selectedProductToOrder, setSelectedProductToOrder] = useState<Product | null>(null);
@@ -62,7 +54,7 @@ export const ClientHomeScreen: React.FC = () => {
     );
   }, [orders, user]);
 
-  // Historial de pedidos anteriores del cliente
+  // Historial de compras anteriores del cliente
   const pastOrders = useMemo(() => {
     if (!user) return [];
     return orders.filter(
@@ -141,26 +133,31 @@ export const ClientHomeScreen: React.FC = () => {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
-      {/* Cabecera del Portal del Cliente */}
+      {/* =================================================================== */}
+      {/* CABECERA CON IDENTIDAD Y ACCESO A MI PERFIL */}
+      {/* =================================================================== */}
       <View style={styles.topHeader}>
         <View style={styles.headerInfoCol}>
           <Text style={styles.welcomeGreeting}>¡Hola, {user?.name}! 👋</Text>
           <Text style={styles.addressLine} numberOfLines={1}>
-            📍 {user?.deliveryAddress || 'Mi Negocio'} ({user?.district || 'Tacna'})
+            📍 {user?.deliveryAddress || 'Tacna Centro'}
           </Text>
         </View>
 
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.headerLogoutBtn}
-            onPress={handleOpenLogout}
-            activeOpacity={0.75}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="log-out-outline" size={16} color={COLORS.danger} />
-            <Text style={styles.headerLogoutText}>Salir</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Acceso unificado a Mi Perfil */}
+        <TouchableOpacity
+          style={styles.headerProfileBtn}
+          onPress={() => {
+            hapticSelection();
+            navigation.navigate('ProfileScreen');
+          }}
+          activeOpacity={0.8}
+        >
+          <View style={styles.headerAvatarCircle}>
+            <Text style={styles.headerAvatarEmoji}>🏪</Text>
+          </View>
+          <Text style={styles.headerProfileText}>Mi Perfil</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -168,35 +165,92 @@ export const ClientHomeScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* =================================================================== */}
-        {/* ESTADO EN VIVO DEL PEDIDO EN RUTA */}
+        {/* NEUROMARKETING: RASTREADOR DE PEDIDO EN VIVO (BARRA DE PROGRESO) */}
         {/* =================================================================== */}
         {activeOrder ? (
           <View style={styles.liveOrderCard}>
             <View style={styles.liveOrderHeader}>
-              <View style={styles.liveStatusBadge}>
-                <View style={styles.pulseDot} />
+              <View
+                style={[
+                  styles.liveStatusBadge,
+                  activeOrder.status === 'IN_TRANSIT' && styles.liveStatusBadgeInTransit,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.pulseDot,
+                    activeOrder.status === 'IN_TRANSIT' && styles.pulseDotInTransit,
+                  ]}
+                />
                 <Text style={styles.liveStatusText}>
-                  {activeOrder.status === 'IN_TRANSIT' ? 'EN RUTA A TU LOCAL' : 'EN PREPARACIÓN'}
+                  {activeOrder.status === 'IN_TRANSIT' ? 'EN RUTA A TU LOCAL' : 'ORDEN RECIBIDA'}
                 </Text>
               </View>
               <Text style={styles.liveOrderCode}>{activeOrder.orderCode}</Text>
             </View>
 
-            <Text style={styles.liveOrderTitle}>
-              {activeOrder.status === 'IN_TRANSIT'
-                ? 'El repartidor está en camino con tus productos'
-                : 'Tu pedido ha sido recibido y está programado para despacho'}
-            </Text>
+            {/* Stepper Visual de Neuromarketing */}
+            <View style={styles.stepperContainer}>
+              <View style={styles.stepCol}>
+                <View style={[styles.stepCircle, styles.stepCircleCompleted]}>
+                  <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                </View>
+                <Text style={styles.stepLabelActive}>Recibido</Text>
+              </View>
 
+              <View
+                style={[
+                  styles.stepLine,
+                  activeOrder.status === 'IN_TRANSIT' && styles.stepLineActive,
+                ]}
+              />
+
+              <View style={styles.stepCol}>
+                <View
+                  style={[
+                    styles.stepCircle,
+                    activeOrder.status === 'IN_TRANSIT'
+                      ? styles.stepCircleActive
+                      : styles.stepCirclePending,
+                  ]}
+                >
+                  <Ionicons
+                    name="bicycle"
+                    size={14}
+                    color={activeOrder.status === 'IN_TRANSIT' ? '#FFFFFF' : '#94A3B8'}
+                  />
+                </View>
+                <Text
+                  style={
+                    activeOrder.status === 'IN_TRANSIT'
+                      ? styles.stepLabelActive
+                      : styles.stepLabelMuted
+                  }
+                >
+                  En Ruta
+                </Text>
+              </View>
+
+              <View style={styles.stepLine} />
+
+              <View style={styles.stepCol}>
+                <View style={[styles.stepCircle, styles.stepCirclePending]}>
+                  <Ionicons name="storefront" size={14} color="#94A3B8" />
+                </View>
+                <Text style={styles.stepLabelMuted}>Entrega</Text>
+              </View>
+            </View>
+
+            {/* Ficha del Chofer */}
             <View style={styles.driverInfoRow}>
               <View style={styles.driverAvatarCircle}>
-                <Ionicons name="bicycle" size={20} color={COLORS.primary} />
+                <Ionicons name="person" size={18} color={COLORS.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.driverName}>
                   {activeOrder.driverAssigned || 'Carlos Mendoza (Camión 02)'}
                 </Text>
-                <Text style={styles.driverEta}>Conductor asignado a tu zona</Text>
+                <Text style={styles.driverEta}>Repartidor oficial en camino</Text>
               </View>
 
               <View style={styles.driverContactBtns}>
@@ -220,91 +274,81 @@ export const ClientHomeScreen: React.FC = () => {
 
             <View style={styles.orderDetailsBox}>
               <Text style={styles.orderDetailsText}>
-                Artículos: {activeOrder.items.map((i) => `${i.quantity}x ${i.name}`).join(', ')}
+                {activeOrder.items.map((i) => `${i.quantity}x ${i.name}`).join(', ')}
               </Text>
               <Text style={styles.orderTotalText}>
-                Total a pagar: {formatCurrency(activeOrder.totalAmount)} ({activeOrder.paymentMethod === 'CASH' ? 'Efectivo' : 'Yape / Digital'})
+                Total: {formatCurrency(activeOrder.totalAmount)} ({activeOrder.paymentMethod === 'CASH' ? 'Efectivo' : 'Digital'})
               </Text>
             </View>
           </View>
         ) : (
           <View style={styles.noOrderBanner}>
             <View style={styles.noOrderIconCircle}>
-              <Ionicons name="cart-outline" size={24} color={COLORS.primary} />
+              <Ionicons name="flash" size={24} color={COLORS.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.noOrderTitle}>¿Necesitas productos hoy?</Text>
+              <Text style={styles.noOrderTitle}>Despacho Inmediato en Tacna</Text>
               <Text style={styles.noOrderSubtitle}>
-                Elige de la lista abajo para solicitar entrega inmediata con 1 solo toque.
+                Elige tus productos abajo para solicitar entrega a tu local con 1 solo toque.
               </Text>
             </View>
           </View>
         )}
 
         {/* =================================================================== */}
-        {/* CATÁLOGO RÁPIDO DE PEDIDOS EN 1 TOQUE */}
+        {/* CATÁLOGO EN 1 TOQUE (NEUROMARKETING: DECISIÓN RÁPIDA) */}
         {/* =================================================================== */}
-        <Text style={styles.sectionHeaderTitle}>Pide en 1 Toque (Entrega Inmediata)</Text>
-        <Text style={styles.sectionHeaderSubtitle}>
-          El repartidor asignado a tu distrito llevará el pedido a tu puerta
-        </Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderTitle}>Pide en 1 Toque</Text>
+          <Text style={styles.sectionHeaderSub}>Entrega garantizada hoy</Text>
+        </View>
 
-        <View style={styles.catalogGrid}>
-          {products.slice(0, 6).map((prod) => (
-            <View key={prod.id} style={styles.productCard}>
-              <View style={styles.productCardTop}>
-                <Text style={styles.productCategoryEmoji}>
-                  {prod.category === 'WATER'
-                    ? '💧'
-                    : prod.category === 'GAS'
-                    ? '🔥'
-                    : prod.category === 'BAKERY'
-                    ? '🥖'
-                    : prod.category === 'CLEANING'
-                    ? '🧴'
-                    : '📦'}
+        <View style={styles.productsGrid}>
+          {products.map((product) => {
+            const emoji =
+              product.category === 'WATER'
+                ? '💧'
+                : product.category === 'GAS'
+                ? '🔥'
+                : product.category === 'BAKERY'
+                ? '🥖'
+                : '🧴';
+
+            return (
+              <View key={product.id} style={styles.productCard}>
+                <View style={styles.productTopRow}>
+                  <View style={styles.productEmojiBox}>
+                    <Text style={{ fontSize: 26 }}>{emoji}</Text>
+                  </View>
+                  <View style={styles.pricePill}>
+                    <Text style={styles.pricePillText}>{formatCurrency(product.price)}</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.productName} numberOfLines={2}>
+                  {product.name}
                 </Text>
-                <Text style={styles.productPriceText}>{formatCurrency(prod.price)}</Text>
+                <Text style={styles.productUnit}>Presentación: {product.unit || 'Unidad'}</Text>
+
+                <TouchableOpacity
+                  style={styles.oneTouchOrderBtn}
+                  onPress={() => handleOpenOrderModal(product)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="add-circle" size={18} color="#FFFFFF" />
+                  <Text style={styles.oneTouchOrderBtnText}>Pedir Ahora</Text>
+                </TouchableOpacity>
               </View>
-
-              <Text style={styles.productName} numberOfLines={2}>
-                {prod.name}
-              </Text>
-              <Text style={styles.productUnit}>{prod.unit}</Text>
-
-              <TouchableOpacity
-                style={styles.orderNowButton}
-                onPress={() => handleOpenOrderModal(prod)}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="flash" size={14} color="#FFFFFF" />
-                <Text style={styles.orderNowButtonText}>Pedir Ahora</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         {/* =================================================================== */}
-        {/* ENVASES RETORNABLES EN PRÉSTAMO (GARANTÍAS) */}
-        {/* =================================================================== */}
-        <View style={styles.returnablesCard}>
-          <View style={styles.returnableIconBox}>
-            <Ionicons name="repeat" size={22} color="#059669" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.returnableTitle}>Mis Envases Retornables</Text>
-            <Text style={styles.returnableDesc}>
-              Recuerda tener listos tus bidones o balones vacíos para intercambiarlos con el conductor.
-            </Text>
-          </View>
-        </View>
-
-        {/* =================================================================== */}
-        {/* HISTORIAL RECIENTE DEL CLIENTE */}
+        {/* HISTORIAL RECIENTE CON RE-PEDIDO RÁPIDO */}
         {/* =================================================================== */}
         {pastOrders.length > 0 && (
           <View style={styles.pastOrdersSection}>
-            <Text style={styles.sectionHeaderTitle}>Historial de Compras</Text>
+            <Text style={styles.sectionHeaderTitle}>Tus Pedidos Anteriores</Text>
             <View style={styles.pastOrdersList}>
               {pastOrders.slice(0, 3).map((past) => (
                 <View key={past.id} style={styles.pastOrderItem}>
@@ -326,79 +370,11 @@ export const ClientHomeScreen: React.FC = () => {
             </View>
           </View>
         )}
-
-        {/* =================================================================== */}
-        {/* TARJETA DE PERFIL Y CIERRE DE SESIÓN AL PIE */}
-        {/* =================================================================== */}
-        <View style={styles.userSessionCard}>
-          <View style={styles.userSessionRow}>
-            <View style={styles.userAvatarBox}>
-              <Text style={{ fontSize: 24 }}>🏪</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.userSessionName}>{user?.name || 'Cliente'}</Text>
-                <View style={styles.rolePillClient}>
-                  <Text style={styles.rolePillClientText}>Cliente</Text>
-                </View>
-              </View>
-              <Text style={styles.userSessionContact}>
-                {user?.deliveryAddress || 'Dirección registrada'} • Tel: {user?.phone || 'N/A'}
-              </Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={styles.sessionLogoutButton}
-            onPress={handleOpenLogout}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="log-out-outline" size={18} color={COLORS.danger} />
-            <Text style={styles.sessionLogoutButtonText}>Cerrar Sesión del Portal</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
 
-      {/* Modal Seguro de Confirmación de Cierre de Sesión */}
-      <Modal
-        visible={isLogoutModalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setIsLogoutModalVisible(false)}
-      >
-        <View style={styles.logoutModalBackdrop}>
-          <View style={styles.logoutModalCard}>
-            <View style={styles.logoutModalIconBox}>
-              <Ionicons name="log-out-outline" size={32} color={COLORS.danger} />
-            </View>
-            <Text style={styles.logoutModalTitle}>¿Cerrar Sesión?</Text>
-            <Text style={styles.logoutModalDesc}>
-              Saldrás del portal de pedidos de {user?.name || 'cliente'}. Para volver a acceder deberás ingresar tus credenciales.
-            </Text>
-
-            <View style={styles.logoutModalButtonsCol}>
-              <TouchableOpacity
-                style={styles.confirmLogoutBtn}
-                onPress={handleConfirmLogout}
-                activeOpacity={0.88}
-              >
-                <Ionicons name="log-out" size={18} color="#FFFFFF" />
-                <Text style={styles.confirmLogoutBtnText}>Sí, Cerrar Sesión</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.cancelLogoutBtn}
-                onPress={() => setIsLogoutModalVisible(false)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.cancelLogoutBtnText}>Cancelar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal para Confirmar Pedido de 1 Toque */}
+      {/* =================================================================== */}
+      {/* MODAL PARA CONFIRMAR PEDIDO RÁPIDO */}
+      {/* =================================================================== */}
       {selectedProductToOrder && (
         <Modal
           visible={Boolean(selectedProductToOrder)}
@@ -407,107 +383,101 @@ export const ClientHomeScreen: React.FC = () => {
           onRequestClose={() => setSelectedProductToOrder(null)}
         >
           <View style={styles.modalBackdrop}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Confirmar Pedido Rápido</Text>
+            <View style={styles.orderModalCard}>
+              <View style={styles.modalHeaderRow}>
+                <View>
+                  <Text style={styles.modalTitle}>Confirmar Solicitud</Text>
+                  <Text style={styles.modalSubtitle}>Entrega directa a tu dirección</Text>
+                </View>
                 <TouchableOpacity onPress={() => setSelectedProductToOrder(null)}>
-                  <Ionicons name="close" size={24} color={COLORS.textPrimary} />
+                  <Ionicons name="close-circle" size={24} color={COLORS.textMuted} />
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.modalProductName}>{selectedProductToOrder.name}</Text>
-              <Text style={styles.modalProductPrice}>
-                {formatCurrency(selectedProductToOrder.price)} c/u ({selectedProductToOrder.unit})
-              </Text>
+              <View style={styles.productModalDetail}>
+                <Text style={styles.modalProductName}>{selectedProductToOrder.name}</Text>
+                <Text style={styles.modalProductPrice}>
+                  Precio unitario: {formatCurrency(selectedProductToOrder.price)}
+                </Text>
+              </View>
 
-              {/* Selector de cantidad */}
-              <View style={styles.modalQuantityRow}>
-                <Text style={styles.modalQtyLabel}>Cantidad a solicitar:</Text>
-                <View style={styles.qtyControlBox}>
+              {/* Selector de Cantidad */}
+              <View style={styles.quantitySection}>
+                <Text style={styles.quantityLabel}>Cantidad a solicitar:</Text>
+                <View style={styles.quantityControls}>
                   <TouchableOpacity
-                    style={styles.qtyBtn}
-                    onPress={() => {
-                      hapticSelection();
-                      setOrderQuantity((q) => Math.max(1, q - 1));
-                    }}
+                    style={styles.quantityBtn}
+                    onPress={() => setOrderQuantity(Math.max(1, orderQuantity - 1))}
                   >
                     <Ionicons name="remove" size={18} color={COLORS.textPrimary} />
                   </TouchableOpacity>
-                  <Text style={styles.qtyNum}>{orderQuantity}</Text>
+                  <Text style={styles.quantityValue}>{orderQuantity}</Text>
                   <TouchableOpacity
-                    style={styles.qtyBtn}
-                    onPress={() => {
-                      hapticSelection();
-                      setOrderQuantity((q) => q + 1);
-                    }}
+                    style={styles.quantityBtn}
+                    onPress={() => setOrderQuantity(orderQuantity + 1)}
                   >
                     <Ionicons name="add" size={18} color={COLORS.textPrimary} />
                   </TouchableOpacity>
                 </View>
               </View>
 
-              {/* Método de pago */}
-              <Text style={styles.modalSectionLabel}>Forma de Pago:</Text>
-              <View style={styles.paymentToggleRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.paymentToggleBtn,
-                    paymentMethod === 'CASH' && styles.paymentToggleBtnActive,
-                  ]}
-                  onPress={() => setPaymentMethod('CASH')}
-                >
-                  <Ionicons
-                    name="cash-outline"
-                    size={16}
-                    color={paymentMethod === 'CASH' ? '#FFFFFF' : COLORS.textPrimary}
-                  />
-                  <Text
+              {/* Método de Pago */}
+              <View style={styles.paymentSection}>
+                <Text style={styles.paymentLabel}>Forma de Pago al Recibir:</Text>
+                <View style={styles.paymentOptionsRow}>
+                  <TouchableOpacity
                     style={[
-                      styles.paymentToggleText,
-                      paymentMethod === 'CASH' && styles.paymentToggleTextActive,
+                      styles.paymentOptionBtn,
+                      paymentMethod === 'CASH' && styles.paymentOptionActive,
                     ]}
+                    onPress={() => setPaymentMethod('CASH')}
                   >
-                    Efectivo
-                  </Text>
-                </TouchableOpacity>
+                    <Text style={{ fontSize: 16 }}>💵</Text>
+                    <Text
+                      style={[
+                        styles.paymentOptionText,
+                        paymentMethod === 'CASH' && styles.paymentOptionTextActive,
+                      ]}
+                    >
+                      Efectivo
+                    </Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[
-                    styles.paymentToggleBtn,
-                    paymentMethod === 'YAPE_PLIN' && styles.paymentToggleBtnActive,
-                  ]}
-                  onPress={() => setPaymentMethod('YAPE_PLIN')}
-                >
-                  <Ionicons
-                    name="phone-portrait-outline"
-                    size={16}
-                    color={paymentMethod === 'YAPE_PLIN' ? '#FFFFFF' : COLORS.textPrimary}
-                  />
-                  <Text
+                  <TouchableOpacity
                     style={[
-                      styles.paymentToggleText,
-                      paymentMethod === 'YAPE_PLIN' && styles.paymentToggleTextActive,
+                      styles.paymentOptionBtn,
+                      paymentMethod === 'YAPE_PLIN' && styles.paymentOptionActive,
                     ]}
+                    onPress={() => setPaymentMethod('YAPE_PLIN')}
                   >
-                    Yape / Plin
-                  </Text>
-                </TouchableOpacity>
+                    <Text style={{ fontSize: 16 }}>📱</Text>
+                    <Text
+                      style={[
+                        styles.paymentOptionText,
+                        paymentMethod === 'YAPE_PLIN' && styles.paymentOptionTextActive,
+                      ]}
+                    >
+                      Yape / Plin
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
-              <View style={styles.modalTotalRow}>
-                <Text style={styles.modalTotalLabel}>Total a pagar:</Text>
-                <Text style={styles.modalTotalAmount}>
+              {/* Total Final */}
+              <View style={styles.totalRow}>
+                <Text style={styles.totalRowLabel}>Total a Pagar:</Text>
+                <Text style={styles.totalRowValue}>
                   {formatCurrency(selectedProductToOrder.price * orderQuantity)}
                 </Text>
               </View>
 
               <TouchableOpacity
-                style={styles.modalConfirmBtn}
+                style={styles.confirmOrderFinalBtn}
                 onPress={handleConfirmOrder}
                 activeOpacity={0.88}
               >
-                <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                <Text style={styles.modalConfirmBtnText}>Enviar Pedido a Mi Dirección</Text>
+                <Ionicons name="flash" size={18} color="#FFFFFF" />
+                <Text style={styles.confirmOrderFinalBtnText}>Enviar Pedido Ahora</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -534,270 +504,176 @@ const styles = StyleSheet.create({
   },
   headerInfoCol: {
     flex: 1,
+    marginRight: 10,
   },
   welcomeGreeting: {
     fontSize: 18,
-    fontWeight: '900',
-    color: COLORS.secondary,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
   },
   addressLine: {
     fontSize: 12,
     color: COLORS.textSecondary,
     marginTop: 2,
-    fontWeight: '500',
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerLogoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: RADIUS.md,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    minHeight: 38,
-  },
-  headerLogoutText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.danger,
-  },
-  /* Tarjeta de Sesión al Pie */
-  userSessionCard: {
-    backgroundColor: COLORS.surface,
-    marginTop: SPACING.xl,
-    marginBottom: SPACING.lg,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-  },
-  userSessionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: SPACING.md,
-  },
-  userAvatarBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#ECFDF5',
+  headerProfileBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
   },
-  userSessionName: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
+  headerAvatarCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1.5,
+    borderColor: '#6EE7B7',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  userSessionContact: {
-    fontSize: 11,
+  headerAvatarEmoji: {
+    fontSize: 20,
+  },
+  headerProfileText: {
+    fontSize: 10,
+    fontWeight: '700',
     color: COLORS.textSecondary,
     marginTop: 2,
-  },
-  rolePillClient: {
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: RADIUS.sm,
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-  },
-  rolePillClientText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#065F46',
-  },
-  sessionLogoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FEF2F2',
-    borderRadius: RADIUS.md,
-    height: TOUCH_TARGET.buttonHeight,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    gap: 8,
-  },
-  sessionLogoutButtonText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.danger,
-  },
-  /* Modal de Cierre de Sesión */
-  logoutModalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: SPACING.xl,
-  },
-  logoutModalCard: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.xl,
-    alignItems: 'center',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-  },
-  logoutModalIconBox: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FEE2E2',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  logoutModalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    marginBottom: 6,
-  },
-  logoutModalDesc: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 20,
-  },
-  logoutModalButtonsCol: {
-    width: '100%',
-    gap: 10,
-  },
-  confirmLogoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.danger,
-    borderRadius: RADIUS.md,
-    height: TOUCH_TARGET.buttonHeight,
-    gap: 8,
-  },
-  confirmLogoutBtnText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  cancelLogoutBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 44,
-    borderRadius: RADIUS.md,
-  },
-  cancelLogoutBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
   },
   scrollContent: {
     padding: SPACING.lg,
     paddingBottom: 40,
   },
-  /* Tarjeta de Pedido en Vivo */
+  /* Rastreador de Pedido Activo */
   liveOrderCard: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     padding: SPACING.lg,
+    marginBottom: SPACING.lg,
     borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    marginBottom: SPACING.xl,
-    elevation: 3,
+    borderColor: '#BFDBFE',
+    elevation: 4,
     shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
   },
   liveOrderHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'space-between',
+    marginBottom: SPACING.md,
   },
   liveStatusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: RADIUS.sm,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: RADIUS.full,
     gap: 6,
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
+  },
+  liveStatusBadgeInTransit: {
+    backgroundColor: '#EFF6FF',
   },
   pulseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: COLORS.success,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D97706',
+  },
+  pulseDotInTransit: {
+    backgroundColor: COLORS.primary,
   },
   liveStatusText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
-    color: '#065F46',
+    color: '#92400E',
+    letterSpacing: 0.5,
   },
   liveOrderCode: {
     fontSize: 13,
     fontWeight: '800',
-    color: COLORS.secondary,
+    color: COLORS.textSecondary,
   },
-  liveOrderTitle: {
-    fontSize: 15,
+  /* Stepper Visual */
+  stepperContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginVertical: SPACING.md,
+  },
+  stepCol: {
+    alignItems: 'center',
+  },
+  stepCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepCircleCompleted: {
+    backgroundColor: COLORS.success,
+  },
+  stepCircleActive: {
+    backgroundColor: COLORS.primary,
+  },
+  stepCirclePending: {
+    backgroundColor: '#E2E8F0',
+  },
+  stepLabelActive: {
+    fontSize: 10,
     fontWeight: '800',
     color: COLORS.textPrimary,
-    lineHeight: 20,
-    marginBottom: 12,
+    marginTop: 4,
+  },
+  stepLabelMuted: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginTop: 4,
+  },
+  stepLine: {
+    flex: 1,
+    height: 3,
+    backgroundColor: '#E2E8F0',
+    marginHorizontal: 8,
+    marginTop: -14,
+  },
+  stepLineActive: {
+    backgroundColor: COLORS.primary,
   },
   driverInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
     borderRadius: RADIUS.md,
-    padding: 10,
-    gap: 10,
+    padding: SPACING.sm,
+    marginVertical: SPACING.sm,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#E2E8F0',
   },
   driverAvatarCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 10,
   },
   driverName: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     color: COLORS.textPrimary,
   },
   driverEta: {
     fontSize: 11,
-    color: COLORS.textMuted,
-    marginTop: 1,
+    color: COLORS.textSecondary,
   },
   driverContactBtns: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
   },
   driverCallBtn: {
     width: 34,
@@ -816,7 +692,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   orderDetailsBox: {
-    marginTop: 10,
+    marginTop: 6,
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
@@ -824,13 +700,12 @@ const styles = StyleSheet.create({
   orderDetailsText: {
     fontSize: 12,
     color: COLORS.textSecondary,
-    fontWeight: '500',
   },
   orderTotalText: {
     fontSize: 13,
     fontWeight: '800',
     color: COLORS.textPrimary,
-    marginTop: 3,
+    marginTop: 2,
   },
   noOrderBanner: {
     flexDirection: 'row',
@@ -838,10 +713,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFF6FF',
     borderRadius: RADIUS.lg,
     padding: SPACING.md,
+    marginBottom: SPACING.lg,
     borderWidth: 1,
     borderColor: '#BFDBFE',
     gap: 12,
-    marginBottom: SPACING.xl,
   },
   noOrderIconCircle: {
     width: 44,
@@ -862,122 +737,106 @@ const styles = StyleSheet.create({
     marginTop: 2,
     lineHeight: 16,
   },
-  sectionHeaderTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.secondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  sectionHeaderSubtitle: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    marginTop: 2,
-    marginBottom: SPACING.md,
-  },
-  catalogGrid: {
+  /* Catálogo en 1 Toque */
+  sectionHeaderRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: SPACING.sm,
+  },
+  sectionHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  sectionHeaderSub: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  productsGrid: {
+    gap: 12,
     marginBottom: SPACING.xl,
   },
   productCard: {
-    width: '48%',
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     padding: SPACING.md,
     borderWidth: 1,
     borderColor: COLORS.border,
-    justifyContent: 'space-between',
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
   },
-  productCardTop: {
+  productTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  productCategoryEmoji: {
-    fontSize: 22,
+  productEmojiBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  productPriceText: {
+  pricePill: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: RADIUS.full,
+  },
+  pricePillText: {
     fontSize: 15,
     fontWeight: '900',
-    color: COLORS.textPrimary,
+    color: COLORS.primary,
   },
   productName: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
     color: COLORS.textPrimary,
-    lineHeight: 17,
   },
   productUnit: {
-    fontSize: 11,
-    color: COLORS.textMuted,
+    fontSize: 12,
+    color: COLORS.textSecondary,
     marginTop: 2,
     marginBottom: 10,
   },
-  orderNowButton: {
+  oneTouchOrderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.primary,
     borderRadius: RADIUS.md,
-    paddingVertical: 8,
-    gap: 4,
+    height: 42,
+    gap: 6,
   },
-  orderNowButtonText: {
+  oneTouchOrderBtnText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  returnablesCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ECFDF5',
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-    gap: 12,
-    marginBottom: SPACING.xl,
-  },
-  returnableIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#D1FAE5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  returnableTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#065F46',
   },
-  returnableDesc: {
-    fontSize: 11,
-    color: '#047857',
-    marginTop: 2,
-    lineHeight: 15,
-  },
+  /* Historial */
   pastOrdersSection: {
-    marginTop: 6,
+    marginTop: SPACING.sm,
   },
   pastOrdersList: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    overflow: 'hidden',
+    gap: 8,
+    marginTop: SPACING.sm,
   },
   pastOrderItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
     padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   pastOrderCode: {
     fontSize: 13,
@@ -1001,148 +860,165 @@ const styles = StyleSheet.create({
   },
   deliveredBadge: {
     backgroundColor: '#ECFDF5',
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: RADIUS.sm,
     marginTop: 4,
   },
   deliveredBadgeText: {
     fontSize: 10,
-    fontWeight: '700',
-    color: COLORS.success,
+    fontWeight: '800',
+    color: '#059669',
   },
-  /* Modal */
+  /* Modal de Pedido Rápido */
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.lg,
   },
-  modalContent: {
+  orderModalCard: {
     backgroundColor: COLORS.surface,
-    borderTopLeftRadius: RADIUS.xl,
-    borderTopRightRadius: RADIUS.xl,
-    padding: SPACING.xl,
-    paddingBottom: 34,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    width: '100%',
+    maxWidth: 360,
   },
-  modalHeader: {
+  modalHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: SPACING.md,
   },
   modalTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.secondary,
-  },
-  modalProductName: {
     fontSize: 18,
     fontWeight: '800',
     color: COLORS.textPrimary,
   },
+  modalSubtitle: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 1,
+  },
+  productModalDetail: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginVertical: SPACING.sm,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalProductName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
   modalProductPrice: {
-    fontSize: 14,
-    color: COLORS.primary,
-    fontWeight: '700',
+    fontSize: 13,
+    color: COLORS.textSecondary,
     marginTop: 2,
-    marginBottom: 14,
   },
-  modalQuantityRow: {
+  quantitySection: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    justifyContent: 'space-between',
+    marginVertical: SPACING.md,
   },
-  modalQtyLabel: {
-    fontSize: 14,
+  quantityLabel: {
+    fontSize: 13,
     fontWeight: '700',
     color: COLORS.textPrimary,
   },
-  qtyControlBox: {
+  quantityControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
+    gap: 12,
   },
-  qtyBtn: {
-    width: 38,
-    height: 38,
+  quantityBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  qtyNum: {
+  quantityValue: {
     fontSize: 16,
     fontWeight: '800',
-    paddingHorizontal: 14,
     color: COLORS.textPrimary,
+    minWidth: 20,
+    textAlign: 'center',
   },
-  modalSectionLabel: {
+  paymentSection: {
+    marginVertical: SPACING.sm,
+  },
+  paymentLabel: {
     fontSize: 12,
     fontWeight: '700',
     color: COLORS.textSecondary,
     marginBottom: 8,
   },
-  paymentToggleRow: {
+  paymentOptionsRow: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 16,
   },
-  paymentToggleBtn: {
+  paymentOptionBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: RADIUS.md,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
     gap: 6,
+    height: 42,
+    borderRadius: RADIUS.md,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  paymentToggleBtnActive: {
-    backgroundColor: COLORS.primary,
+  paymentOptionActive: {
+    backgroundColor: '#EFF6FF',
     borderColor: COLORS.primary,
   },
-  paymentToggleText: {
-    fontSize: 13,
+  paymentOptionText: {
+    fontSize: 12,
     fontWeight: '700',
-    color: COLORS.textPrimary,
+    color: COLORS.textSecondary,
   },
-  paymentToggleTextActive: {
-    color: '#FFFFFF',
+  paymentOptionTextActive: {
+    color: COLORS.primary,
   },
-  modalTotalRow: {
+  totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    marginTop: SPACING.md,
+    paddingTop: SPACING.md,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
-    marginBottom: 14,
   },
-  modalTotalLabel: {
+  totalRowLabel: {
     fontSize: 14,
     fontWeight: '700',
     color: COLORS.textSecondary,
   },
-  modalTotalAmount: {
-    fontSize: 24,
+  totalRowValue: {
+    fontSize: 18,
     fontWeight: '900',
-    color: COLORS.textPrimary,
+    color: COLORS.primary,
   },
-  modalConfirmBtn: {
-    backgroundColor: COLORS.success,
-    borderRadius: RADIUS.md,
-    height: TOUCH_TARGET.buttonHeight,
+  confirmOrderFinalBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    height: TOUCH_TARGET.buttonHeight,
+    marginTop: SPACING.lg,
     gap: 8,
-    elevation: 3,
   },
-  modalConfirmBtnText: {
+  confirmOrderFinalBtnText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
   },
 });

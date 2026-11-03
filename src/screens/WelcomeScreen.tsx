@@ -268,124 +268,29 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         {/* =================================================================== */}
-        {/* MÓDULOS DE GESTIÓN Y OPERACIÓN SEGÚN ROL */}
+        {/* ACCIÓN RÁPIDA DE CARGA / MANIFIESTO */}
         {/* =================================================================== */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionHeaderTitle}>
-            {isAdmin ? 'Módulos y Gestión CRUD' : 'Herramientas de Ruta'}
-          </Text>
-        </View>
-
-        <View style={styles.modulesContainer}>
-          {/* Módulo Clientes (Admin gestiona CRUD; Chofer consulta directorio de entrega) */}
-          <TouchableOpacity
-            style={styles.moduleRowCard}
-            onPress={() => {
-              hapticSelection();
-              navigation.navigate('CustomerListScreen');
-            }}
-            activeOpacity={0.75}
-          >
-            <View style={[styles.moduleIconBox, { backgroundColor: '#EFF6FF' }]}>
-              <Ionicons name="people" size={22} color={COLORS.primary} />
-            </View>
-            <View style={styles.moduleTextCol}>
-              <Text style={styles.moduleTitle}>
-                {isAdmin ? 'Gestión de Clientes (CRUD)' : 'Directorio de Clientes'}
-              </Text>
-              <Text style={styles.moduleSubtitle}>
-                {isAdmin
-                  ? 'Registrar, editar ubicación GPS y dar de baja'
-                  : 'Contactar clientes por llamada o WhatsApp'}
-              </Text>
-            </View>
-            <View style={styles.moduleEndBox}>
-              <Text style={styles.moduleCountBadge}>{customers.length}</Text>
-              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-            </View>
-          </TouchableOpacity>
-
-          {/* Módulo Catálogo de Productos (Solo Admin gestiona precios y catálogo) */}
-          {isAdmin && (
-            <TouchableOpacity
-              style={styles.moduleRowCard}
-              onPress={() => {
-                hapticSelection();
-                navigation.navigate('ProductListScreen');
-              }}
-              activeOpacity={0.75}
-            >
-              <View style={[styles.moduleIconBox, { backgroundColor: '#FEF3C7' }]}>
-                <Ionicons name="pricetags" size={22} color="#D97706" />
-              </View>
-              <View style={styles.moduleTextCol}>
-                <Text style={styles.moduleTitle}>Catálogo de Productos (CRUD)</Text>
-                <Text style={styles.moduleSubtitle}>
-                  Gestionar precios, unidades, stock y balones/bidones
-                </Text>
-              </View>
-              <View style={styles.moduleEndBox}>
-                <Text style={[styles.moduleCountBadge, { color: '#B45309', backgroundColor: '#FEF3C7' }]}>
-                  {products.length}
-                </Text>
-                <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-              </View>
-            </TouchableOpacity>
-          )}
-
-          {/* Módulo Manifiesto de Carga (Accesible para ambos) */}
-          <TouchableOpacity
-            style={styles.moduleRowCard}
-            onPress={() => {
-              hapticSelection();
-              navigation.navigate('RouteSummaryModalOrScreen');
-            }}
-            activeOpacity={0.75}
-          >
-            <View style={[styles.moduleIconBox, { backgroundColor: '#F3E8FF' }]}>
-              <Ionicons name="clipboard" size={22} color="#7C3AED" />
-            </View>
-            <View style={styles.moduleTextCol}>
-              <Text style={styles.moduleTitle}>Manifiesto de Carga</Text>
-              <Text style={styles.moduleSubtitle}>
-                {isDistributor
-                  ? 'Arqueo de envases y carga en tu vehículo'
-                  : 'Auditoría de carga física y resumen de despachos'}
-              </Text>
-            </View>
-            <View style={styles.moduleEndBox}>
-              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-            </View>
-          </TouchableOpacity>
-
-          {/* Acceso a lista de pedidos para el chofer */}
-          {isDistributor && (
-            <TouchableOpacity
-              style={styles.moduleRowCard}
-              onPress={() => {
-                hapticSelection();
-                navigation.navigate('OrderListScreen');
-              }}
-              activeOpacity={0.75}
-            >
-              <View style={[styles.moduleIconBox, { backgroundColor: '#ECFDF5' }]}>
-                <Ionicons name="receipt" size={22} color={COLORS.success} />
-              </View>
-              <View style={styles.moduleTextCol}>
-                <Text style={styles.moduleTitle}>Mis Despachos del Día</Text>
-                <Text style={styles.moduleSubtitle}>
-                  Ver detalle de cobros, direcciones y notas de entrega
-                </Text>
-              </View>
-              <View style={styles.moduleEndBox}>
-                <Text style={[styles.moduleCountBadge, { color: '#047857', backgroundColor: '#D1FAE5' }]}>
-                  {orders.length}
-                </Text>
-                <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-              </View>
-            </TouchableOpacity>
-          )}
-        </View>
+        <TouchableOpacity
+          style={styles.manifestCard}
+          onPress={() => {
+            hapticSelection();
+            navigation.navigate('RouteSummaryModalOrScreen');
+          }}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.manifestIconBox, { backgroundColor: '#F3E8FF' }]}>
+            <Ionicons name="clipboard" size={22} color="#7C3AED" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.manifestTitle}>Manifiesto y Carga en Camión</Text>
+            <Text style={styles.manifestSubtitle}>
+              {isDistributor
+                ? 'Control de balones, bidones y envases vacíos a bordo'
+                : 'Auditoría física de carga total y envases retornables'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Floating Dock - Burbujas Flotantes de Navegación */}
@@ -700,54 +605,35 @@ const styles = StyleSheet.create({
     marginTop: 2,
     textAlign: 'center',
   },
-  /* Módulos */
-  modulesContainer: {
-    paddingHorizontal: SPACING.lg,
-    gap: 10,
-  },
-  moduleRowCard: {
+  /* Manifiesto de Carga Directo */
+  manifestCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.lg,
     borderRadius: RADIUS.lg,
     padding: SPACING.md,
     borderWidth: 1,
     borderColor: COLORS.border,
     gap: 12,
   },
-  moduleIconBox: {
+  manifestIconBox: {
     width: 44,
     height: 44,
     borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  moduleTextCol: {
-    flex: 1,
-  },
-  moduleTitle: {
+  manifestTitle: {
     fontSize: 14,
     fontWeight: '800',
     color: COLORS.textPrimary,
   },
-  moduleSubtitle: {
+  manifestSubtitle: {
     fontSize: 11,
     color: COLORS.textSecondary,
     marginTop: 2,
     lineHeight: 15,
-  },
-  moduleEndBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  moduleCountBadge: {
-    backgroundColor: '#EFF6FF',
-    color: COLORS.primary,
-    fontSize: 12,
-    fontWeight: '800',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: RADIUS.sm,
   },
 });

@@ -106,6 +106,7 @@ export const RootNavigator: React.FC = () => {
           }}
         >
           <Stack.Screen name="ClientHomeScreen" component={ClientHomeScreen} />
+          <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     );
