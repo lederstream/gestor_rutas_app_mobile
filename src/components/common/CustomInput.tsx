@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * COMMON COMPONENT: CustomInput.tsx
- * Accessible text input with label, icon, clear action and validation error handling
- * ============================================================================
- */
-
 import React, { useState, useRef } from 'react';
 import {
   View,
@@ -37,6 +30,7 @@ export interface CustomInputProps {
   onClear?: () => void;
   containerStyle?: StyleProp<ViewStyle>;
   maxLength?: number;
+  secureTextEntry?: boolean;
 }
 
 export const CustomInput: React.FC<CustomInputProps> = ({
@@ -55,8 +49,10 @@ export const CustomInput: React.FC<CustomInputProps> = ({
   onClear,
   containerStyle,
   maxLength,
+  secureTextEntry = false,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   const hasError = Boolean(error);
@@ -117,9 +113,22 @@ export const CustomInput: React.FC<CustomInputProps> = ({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           textAlignVertical={multiline ? 'top' : 'center'}
+          secureTextEntry={secureTextEntry ? !isPasswordVisible : false}
         />
 
-        {value.length > 0 && onClear && editable && (
+        {secureTextEntry ? (
+          <TouchableOpacity
+            onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+            style={styles.clearButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons
+              name={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
+              size={18}
+              color={COLORS.textMuted}
+            />
+          </TouchableOpacity>
+        ) : value.length > 0 && onClear && editable ? (
           <TouchableOpacity
             onPress={onClear}
             style={styles.clearButton}
@@ -127,7 +136,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
           >
             <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
           </TouchableOpacity>
-        )}
+        ) : null}
       </Pressable>
 
       {hasError ? (

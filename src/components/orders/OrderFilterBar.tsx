@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * ORDER COMPONENT: OrderFilterBar.tsx
- * Horizontal scrollable filter bar with real-time status count badges
- * ============================================================================
- */
-
 import React from 'react';
 import {
   ScrollView,

@@ -1,20 +1,16 @@
-/**
- * ============================================================================
- * SCREEN: OrderListScreen.tsx
- * Tablero de Despachos Optimizado para Repartidores y Operadores Logísticos
- * ============================================================================
- */
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   StatusBar,
   Alert,
   RefreshControl,
+  Modal,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -29,26 +25,97 @@ import { hapticImpact, hapticNotification, hapticSelection } from '../utils/hapt
 import { Header } from '../components/common/Header';
 import { CustomInput } from '../components/common/CustomInput';
 import { OrderCard } from '../components/orders/OrderCard';
-import { OrderFilterBar } from '../components/orders/OrderFilterBar';
 import { FloatingBottomDock } from '../components/common/FloatingBottomDock';
+
+const STATUS_OPTIONS = [
+  { id: 'ALL', label: 'Todos los Pedidos', shortLabel: 'Todos', icon: 'layers-outline' },
+  { id: 'PENDING', label: 'Pendientes por Despachar', shortLabel: 'Pendientes', icon: 'hourglass-outline' },
+  { id: 'IN_TRANSIT', label: 'En Ruta / Tránsito', shortLabel: 'En Ruta', icon: 'bicycle-outline' },
+  { id: 'DELIVERED', label: 'Entregados y Cobrados', shortLabel: 'Entregados', icon: 'checkmark-circle-outline' },
+  { id: 'CANCELLED', label: 'Anulados / Cancelados', shortLabel: 'Anulados', icon: 'close-circle-outline' },
+];
+
+const CATEGORY_OPTIONS = [
+  { id: 'ALL', label: 'Todos los Rubros', shortLabel: 'Todos los Rubros', icon: 'globe-outline' },
+  { id: 'WATER', label: 'Agua Purificada', shortLabel: 'Agua', icon: 'water-outline' },
+  { id: 'GAS', label: 'Gas Doméstico', shortLabel: 'Gas', icon: 'flame-outline' },
+  { id: 'BAKERY', label: 'Panadería y Pastelería', shortLabel: 'Panadería', icon: 'restaurant-outline' },
+  { id: 'CLEANING', label: 'Productos de Limpieza', shortLabel: 'Limpieza', icon: 'sparkles-outline' },
+];
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OrderListScreen'>;
 
 export const OrderListScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
+  const isDistributor = user?.role === 'DISTRIBUTOR';
+
   const {
     orders,
-    filteredOrders,
-    statistics,
     filter,
     setFilter,
     resetFilters,
     updateOrderStatus,
   } = useOrders();
 
+  const [adminCategory, setAdminCategory] = useState<string>('ALL');
   const [search, setSearch] = useState(filter.searchQuery);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isStatusModalVisible, setIsStatusModalVisible] = useState(false);
+  const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
+
+  // Base de órdenes según el rol y rubro especializado del distribuidor
+  const baseOrdersForUser = useMemo(() => {
+    if (isDistributor) {
+      const specialty = user?.specialtyCategory || 'WATER';
+      return orders.filter((o) => o.category === specialty);
+    }
+    if (isAdmin && adminCategory !== 'ALL') {
+      return orders.filter((o) => o.category === adminCategory);
+    }
+    return orders;
+  }, [orders, isDistributor, user, isAdmin, adminCategory]);
+
+  // Órdenes filtradas para mostrar
+  const displayedOrders = useMemo(() => {
+    return baseOrdersForUser.filter((order) => {
+      // 1. Status Filter
+      if (filter.status !== 'ALL' && order.status !== filter.status) {
+        return false;
+      }
+      // 2. Search Query Filter
+      if (filter.searchQuery.trim().length > 0) {
+        const query = filter.searchQuery.toLowerCase().trim();
+        const matchesName = order.customerName.toLowerCase().includes(query);
+        const matchesCode = order.orderCode.toLowerCase().includes(query);
+        const matchesAddress = order.deliveryAddress.toLowerCase().includes(query);
+        const matchesPhone = order.customerPhone.includes(query);
+        if (!matchesName && !matchesCode && !matchesAddress && !matchesPhone) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [baseOrdersForUser, filter.status, filter.searchQuery]);
+
+  // Conteos dinámicos para los filtros de estado
+  const counts = useMemo(
+    () => ({
+      all: baseOrdersForUser.length,
+      pending: baseOrdersForUser.filter((o) => o.status === 'PENDING').length,
+      inTransit: baseOrdersForUser.filter((o) => o.status === 'IN_TRANSIT').length,
+      delivered: baseOrdersForUser.filter((o) => o.status === 'DELIVERED').length,
+      cancelled: baseOrdersForUser.filter((o) => o.status === 'CANCELLED').length,
+    }),
+    [baseOrdersForUser]
+  );
+
+  // Total por cobrar en esta vista
+  const pendingCollection = useMemo(() => {
+    return baseOrdersForUser
+      .filter((o) => o.status !== 'CANCELLED' && o.paymentStatus === 'PENDING')
+      .reduce((sum, o) => sum + o.totalAmount, 0);
+  }, [baseOrdersForUser]);
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
@@ -122,20 +189,45 @@ export const OrderListScreen: React.FC<Props> = ({ navigation }) => {
     </View>
   );
 
+  const currentStatusObj =
+    STATUS_OPTIONS.find((s) => s.id === filter.status) || STATUS_OPTIONS[0];
+  const currentCategoryObj =
+    CATEGORY_OPTIONS.find((c) => c.id === adminCategory) || CATEGORY_OPTIONS[0];
+  const currentStatusCount =
+    counts[
+      filter.status === 'ALL'
+        ? 'all'
+        : filter.status === 'PENDING'
+        ? 'pending'
+        : filter.status === 'IN_TRANSIT'
+        ? 'inTransit'
+        : filter.status === 'DELIVERED'
+        ? 'delivered'
+        : 'cancelled'
+    ];
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
-      {/* Cabecera con acceso directo al Mapa y Manifiesto */}
+      {/* Cabecera con botón de acción contextual (Crear pedido para Admin / Mapa para Distribuidor) */}
       <Header
-        title="Hoja de Ruta"
-        subtitle={`${filteredOrders.length} despachos listados`}
+        title={isDistributor ? 'Mis Entregas' : 'Hoja de Ruta'}
+        subtitle={
+          isDistributor
+            ? user?.specialtyLabel || 'Distribuidor de Agua Purificada'
+            : `${displayedOrders.length} despachos listados`
+        }
         showBackButton={true}
         onBackPress={() => navigation.goBack()}
-        rightActionIcon="map-outline"
+        rightActionIcon={isAdmin ? "add-circle" : "map-outline"}
         onRightActionPress={() => {
           hapticSelection();
-          navigation.navigate('MapRouteScreen');
+          if (isAdmin) {
+            navigation.navigate('CreateOrderScreen');
+          } else {
+            navigation.navigate('MapRouteScreen');
+          }
         }}
       />
 
@@ -144,28 +236,28 @@ export const OrderListScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.kpiCol}>
           <Text style={styles.kpiLabel}>Pendientes</Text>
           <Text style={[styles.kpiValue, { color: COLORS.statusPending }]}>
-            {statistics.pendingOrders}
+            {counts.pending}
           </Text>
         </View>
         <View style={styles.kpiDivider} />
         <View style={styles.kpiCol}>
           <Text style={styles.kpiLabel}>En Ruta</Text>
           <Text style={[styles.kpiValue, { color: COLORS.statusInTransit }]}>
-            {statistics.inTransitOrders}
+            {counts.inTransit}
           </Text>
         </View>
         <View style={styles.kpiDivider} />
         <View style={styles.kpiCol}>
           <Text style={styles.kpiLabel}>Entregados</Text>
           <Text style={[styles.kpiValue, { color: COLORS.statusDelivered }]}>
-            {statistics.deliveredOrders}
+            {counts.delivered}
           </Text>
         </View>
         <View style={styles.kpiDivider} />
         <View style={styles.kpiCol}>
           <Text style={styles.kpiLabel}>Por Cobrar</Text>
           <Text style={[styles.kpiValue, { color: COLORS.textPrimary }]}>
-            {formatCurrency(statistics.pendingCollection)}
+            {formatCurrency(pendingCollection)}
           </Text>
         </View>
       </View>
@@ -175,29 +267,102 @@ export const OrderListScreen: React.FC<Props> = ({ navigation }) => {
         <CustomInput
           value={search}
           onChangeText={handleSearchChange}
-          placeholder="Buscar por cliente, dirección, distrito o código..."
+          placeholder="Buscar pedido por cliente..."
           icon="search-outline"
           onClear={handleClearSearch}
           containerStyle={{ marginBottom: 0 }}
         />
       </View>
 
-      {/* Filtros Segmentados por Estado */}
-      <OrderFilterBar
-        activeStatus={filter.status}
-        onSelectStatus={handleStatusFilterChange}
-        counts={{
-          all: statistics.totalOrders,
-          pending: statistics.pendingOrders,
-          inTransit: statistics.inTransitOrders,
-          delivered: statistics.deliveredOrders,
-          cancelled: statistics.cancelledOrders,
-        }}
-      />
+      {/* Barra de Filtros Compacta tipo Combobox (Elimina carruseles horizontales) */}
+      <View style={styles.comboboxBar}>
+        {/* Píldora 1: Combobox de Estado */}
+        <TouchableOpacity
+          style={[
+            styles.comboboxPill,
+            filter.status !== 'ALL' && styles.comboboxPillActive,
+          ]}
+          onPress={() => {
+            hapticSelection();
+            setIsStatusModalVisible(true);
+          }}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name={filter.status !== 'ALL' ? 'funnel' : 'funnel-outline'}
+            size={13}
+            color={filter.status !== 'ALL' ? COLORS.primary : '#64748B'}
+          />
+          <Text
+            style={[
+              styles.comboboxPillText,
+              filter.status !== 'ALL' && styles.comboboxPillTextActive,
+            ]}
+            numberOfLines={1}
+          >
+            {currentStatusObj.shortLabel} ({currentStatusCount})
+          </Text>
+          <Ionicons
+            name="chevron-down"
+            size={12}
+            color={filter.status !== 'ALL' ? COLORS.primary : '#94A3B8'}
+          />
+        </TouchableOpacity>
+
+        {/* Píldora 2: Combobox de Rubro (Solo visible para Administrador) */}
+        {isAdmin && (
+          <TouchableOpacity
+            style={[
+              styles.comboboxPill,
+              adminCategory !== 'ALL' && styles.comboboxPillActive,
+            ]}
+            onPress={() => {
+              hapticSelection();
+              setIsCategoryModalVisible(true);
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={adminCategory !== 'ALL' ? 'pricetag' : 'pricetag-outline'}
+              size={13}
+              color={adminCategory !== 'ALL' ? COLORS.primary : '#64748B'}
+            />
+            <Text
+              style={[
+                styles.comboboxPillText,
+                adminCategory !== 'ALL' && styles.comboboxPillTextActive,
+              ]}
+              numberOfLines={1}
+            >
+              {currentCategoryObj.shortLabel}
+            </Text>
+            <Ionicons
+              name="chevron-down"
+              size={12}
+              color={adminCategory !== 'ALL' ? COLORS.primary : '#94A3B8'}
+            />
+          </TouchableOpacity>
+        )}
+
+        {/* Botón rápido para limpiar filtros si hay alguno activo */}
+        {(filter.status !== 'ALL' || (isAdmin && adminCategory !== 'ALL')) && (
+          <TouchableOpacity
+            style={styles.comboboxClearBtn}
+            onPress={() => {
+              hapticImpact('light');
+              resetFilters();
+              setAdminCategory('ALL');
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close-circle" size={17} color="#64748B" />
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Lista Principal de Pedidos */}
       <FlatList
-        data={filteredOrders}
+        data={displayedOrders}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <OrderCard
@@ -226,23 +391,187 @@ export const OrderListScreen: React.FC<Props> = ({ navigation }) => {
         removeClippedSubviews={true}
       />
 
-      {/* Botón Flotante para Generar Pedido (FAB Solo Admin) */}
-      {isAdmin && (
-        <TouchableOpacity
-          style={styles.fab}
-          activeOpacity={0.88}
-          onPress={() => {
-            hapticImpact('medium');
-            navigation.navigate('CreateOrderScreen');
-          }}
-        >
-          <Ionicons name="add" size={24} color="#FFFFFF" />
-          <Text style={styles.fabText}>Nuevo Pedido</Text>
-        </TouchableOpacity>
-      )}
-
       {/* Floating Dock - Burbujas Flotantes de Navegación */}
       <FloatingBottomDock activeTab="ORDERS" navigation={navigation} />
+
+      {/* MODAL SELECTOR DE ESTADO (COMBOBOX DESPLEGABLE) */}
+      <Modal
+        visible={isStatusModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsStatusModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity
+            style={styles.modalDismissArea}
+            activeOpacity={1}
+            onPress={() => setIsStatusModalVisible(false)}
+          />
+          <View style={styles.comboboxSheetCard}>
+            <View style={styles.comboboxSheetHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="funnel" size={18} color={COLORS.primary} />
+                <Text style={styles.comboboxSheetTitle}>Filtrar por Estado de Pedido</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setIsStatusModalVisible(false)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {STATUS_OPTIONS.map((opt) => {
+              const isSelected = filter.status === opt.id;
+              const countVal = counts[
+                opt.id === 'ALL'
+                  ? 'all'
+                  : opt.id === 'PENDING'
+                  ? 'pending'
+                  : opt.id === 'IN_TRANSIT'
+                  ? 'inTransit'
+                  : opt.id === 'DELIVERED'
+                  ? 'delivered'
+                  : 'cancelled'
+              ];
+
+              return (
+                <TouchableOpacity
+                  key={opt.id}
+                  style={[
+                    styles.comboboxOptionRow,
+                    isSelected && styles.comboboxOptionRowActive,
+                  ]}
+                  onPress={() => {
+                    hapticImpact('light');
+                    handleStatusFilterChange(opt.id as any);
+                    setIsStatusModalVisible(false);
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                    <Ionicons
+                      name={opt.icon as any}
+                      size={18}
+                      color={isSelected ? COLORS.primary : '#64748B'}
+                    />
+                    <Text
+                      style={[
+                        styles.comboboxOptionLabel,
+                        isSelected && styles.comboboxOptionLabelActive,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.comboboxCountBadge,
+                      isSelected && styles.comboboxCountBadgeActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.comboboxCountBadgeText,
+                        isSelected && styles.comboboxCountBadgeTextActive,
+                      ]}
+                    >
+                      {countVal}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL SELECTOR DE RUBRO (COMBOBOX DESPLEGABLE SOLO ADMIN) */}
+      {isAdmin && (
+        <Modal
+          visible={isCategoryModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setIsCategoryModalVisible(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <TouchableOpacity
+              style={styles.modalDismissArea}
+              activeOpacity={1}
+              onPress={() => setIsCategoryModalVisible(false)}
+            />
+            <View style={styles.comboboxSheetCard}>
+              <View style={styles.comboboxSheetHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="pricetag" size={18} color={COLORS.primary} />
+                  <Text style={styles.comboboxSheetTitle}>Filtrar por Rubro Especializado</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setIsCategoryModalVisible(false)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="close" size={20} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+
+              {CATEGORY_OPTIONS.map((cat) => {
+                const isSelected = adminCategory === cat.id;
+                const catCount =
+                  cat.id === 'ALL'
+                    ? orders.length
+                    : orders.filter((o) => o.category === cat.id).length;
+
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[
+                      styles.comboboxOptionRow,
+                      isSelected && styles.comboboxOptionRowActive,
+                    ]}
+                    onPress={() => {
+                      hapticImpact('light');
+                      setAdminCategory(cat.id);
+                      setIsCategoryModalVisible(false);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                      <Ionicons
+                        name={cat.icon as any}
+                        size={18}
+                        color={isSelected ? COLORS.primary : '#64748B'}
+                      />
+                      <Text
+                        style={[
+                          styles.comboboxOptionLabel,
+                          isSelected && styles.comboboxOptionLabelActive,
+                        ]}
+                      >
+                        {cat.label}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.comboboxCountBadge,
+                        isSelected && styles.comboboxCountBadgeActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.comboboxCountBadgeText,
+                          isSelected && styles.comboboxCountBadgeTextActive,
+                        ]}
+                      >
+                        {catCount}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 };
@@ -289,7 +618,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: SPACING.lg,
-    paddingBottom: 95,
+    paddingBottom: 115,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -335,27 +664,114 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.primary,
   },
-  fab: {
-    position: 'absolute',
-    bottom: 84,
-    right: 20,
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.full,
-    height: TOUCH_TARGET.buttonHeight,
-    paddingHorizontal: 20,
+  comboboxBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    elevation: 6,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
+    gap: 8,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 8,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
-  fabText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+  comboboxPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 18,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+  },
+  comboboxPillActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  comboboxPillText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  comboboxPillTextActive: {
+    color: COLORS.primary,
     fontWeight: '800',
+  },
+  comboboxClearBtn: {
+    padding: 4,
+    borderRadius: 12,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalDismissArea: {
+    flex: 1,
+  },
+  comboboxSheetCard: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    padding: 18,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 16,
+  },
+  comboboxSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  comboboxSheetTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.secondary,
+  },
+  comboboxOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 11,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    marginBottom: 4,
+  },
+  comboboxOptionRowActive: {
+    backgroundColor: '#EFF6FF',
+  },
+  comboboxOptionLabel: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  comboboxOptionLabelActive: {
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+  comboboxCountBadge: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  comboboxCountBadgeActive: {
+    backgroundColor: '#DBEAFE',
+  },
+  comboboxCountBadgeText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  comboboxCountBadgeTextActive: {
+    color: COLORS.primary,
   },
 });

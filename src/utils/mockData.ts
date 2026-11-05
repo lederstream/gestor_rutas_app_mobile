@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * DATOS INICIALES Y MOCK EN MEMORIA: Gestor de Rutas Móvil ("RutaPro")
- * Catálogo operativo realista para agua, gas GLP, panadería y limpieza industrial.
- * ============================================================================
- */
-
 import { Order } from '../models/Order';
 
 export const INITIAL_ORDERS: Order[] = [
@@ -47,7 +40,7 @@ export const INITIAL_ORDERS: Order[] = [
     deliveredContainers: 5,
     latitude: -18.0125,
     longitude: -70.2480,
-    driverAssigned: 'Carlos Mendoza (Camión 02 - Tacna)',
+    driverAssigned: 'Carlos Mendoza (Camión 02 - Agua)',
     createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
   },
   {
@@ -85,7 +78,7 @@ export const INITIAL_ORDERS: Order[] = [
     notes: 'Solicitar firma de recepción de cocina y revisar válvula',
     latitude: -18.0145,
     longitude: -70.2530,
-    driverAssigned: 'Carlos Mendoza (Camión 02 - Tacna)',
+    driverAssigned: 'Manuel Choque (Camión 05 - Gas GLP)',
     createdAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
   },
   {
@@ -116,7 +109,7 @@ export const INITIAL_ORDERS: Order[] = [
     notes: 'Descargar en garaje posterior con carretilla',
     latitude: -18.0450,
     longitude: -70.2600,
-    driverAssigned: 'Carlos Mendoza (Camión 02 - Tacna)',
+    driverAssigned: 'Rosa Quispe (Furgón 01 - Panadería)',
     createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
   },
   {
@@ -155,8 +148,70 @@ export const INITIAL_ORDERS: Order[] = [
     deliveredAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
     latitude: -18.0050,
     longitude: -70.2300,
-    driverAssigned: 'Carlos Mendoza (Camión 02 - Tacna)',
+    driverAssigned: 'Roberto Flores (Camioneta 03 - Limpieza)',
     createdAt: new Date(Date.now() - 120 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'ord-water-05',
+    orderCode: 'DIST-105',
+    customerId: 'cust-7',
+    customerName: 'Minimarket Los Laureles',
+    customerPhone: '952667788',
+    deliveryAddress: 'Av. Leguía 980',
+    district: 'Tacna (Cercado)',
+    addressReference: 'Cerca a la rotonda Leguía',
+    category: 'WATER',
+    items: [
+      {
+        id: 'item-w-5',
+        name: 'Bidón de Agua Purificada 20L',
+        quantity: 3,
+        unitPrice: 16.0,
+        unit: 'Bidón 20L',
+      },
+    ],
+    totalAmount: 48.0,
+    paymentMethod: 'CASH',
+    paymentStatus: 'PENDING',
+    priority: 'HIGH',
+    status: 'PENDING',
+    scheduledTime: '12:15 PM',
+    notes: 'Cliente con 3 envases de cambio listos',
+    latitude: -18.0185,
+    longitude: -70.2560,
+    driverAssigned: 'Carlos Mendoza (Camión 02 - Agua)',
+    createdAt: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'ord-gas-06',
+    orderCode: 'DIST-106',
+    customerId: 'cust-8',
+    customerName: 'Chifa Dragón Dorado',
+    customerPhone: '952112299',
+    deliveryAddress: 'Av. Pinto 630',
+    district: 'Alto de la Alianza',
+    addressReference: 'A 2 cuadras de la feria Pinto',
+    category: 'GAS',
+    items: [
+      {
+        id: 'item-g-6',
+        name: 'Balón de Gas GLP Comercial 45kg',
+        quantity: 1,
+        unitPrice: 210.0,
+        unit: 'Balón 45kg',
+      },
+    ],
+    totalAmount: 210.0,
+    paymentMethod: 'CASH',
+    paymentStatus: 'PENDING',
+    priority: 'URGENT',
+    status: 'IN_TRANSIT',
+    scheduledTime: '11:00 AM',
+    notes: 'Entregar urgente para el servicio de almuerzo',
+    latitude: -17.9980,
+    longitude: -70.2520,
+    driverAssigned: 'Manuel Choque (Camión 05 - Gas GLP)',
+    createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
   },
 ];
 

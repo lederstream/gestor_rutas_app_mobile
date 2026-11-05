@@ -1,11 +1,4 @@
-/**
- * ============================================================================
- * SCREEN: LoginScreen.tsx
- * Pantalla de Inicio de Sesión Corporativo Seguro con Control de Roles (RBAC)
- * ============================================================================
- */
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -34,6 +27,7 @@ import {
   DISTRICT_COORDINATES,
 } from '../utils/constants';
 import { CustomInput } from '../components/common/CustomInput';
+import { getSavedDistricts } from '../services/districtService';
 import { hapticImpact, hapticSelection, hapticNotification } from '../utils/haptics';
 
 export const LoginScreen: React.FC = () => {
@@ -45,31 +39,44 @@ export const LoginScreen: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isDemoSheetOpen, setIsDemoSheetOpen] = useState(false);
 
   // Estados del Modal de Auto-Registro de Clientes
   const [isRegisterModalVisible, setIsRegisterModalVisible] = useState(false);
+  const [availableDistricts, setAvailableDistricts] = useState<string[]>(AVAILABLE_DISTRICTS);
+  const [isDistrictModalOpen, setIsDistrictModalOpen] = useState(false);
   const [regName, setRegName] = useState('');
   const [regCustomerType, setRegCustomerType] = useState<CustomerType>('B2C');
   const [regPhone, setRegPhone] = useState('');
-  const [regDistrict, setRegDistrict] = useState('');
+  const [regDistrict, setRegDistrict] = useState(AVAILABLE_DISTRICTS[0]);
   const [regAddress, setRegAddress] = useState('');
-  const [regUsername, setRegUsername] = useState('');
   const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [regErrors, setRegErrors] = useState<Record<string, string>>({});
   const [isRegSubmitting, setIsRegSubmitting] = useState(false);
 
+  // Cargar distritos dinámicos configurados por el Administrador
+  useEffect(() => {
+    getSavedDistricts().then((dists) => {
+      if (dists && dists.length > 0) {
+        setAvailableDistricts(dists);
+        setRegDistrict(dists[0]);
+      }
+    });
+  }, []);
+
   const handleRegisterClient = async () => {
+    const cleanPhone = regPhone.replace(/\D/g, '');
     const errs: Record<string, string> = {};
-    if (!regName.trim()) errs.name = 'Ingresa tu nombre o razón social';
-    if (!regPhone.trim()) errs.phone = 'Ingresa un teléfono o celular de contacto';
-    if (!regDistrict.trim()) errs.district = 'Indica el distrito o zona de entrega';
-    if (!regAddress.trim()) errs.address = 'Indica tu dirección exacta de entrega';
-    if (!regUsername.trim() || regUsername.trim().length < 3) {
-      errs.username = 'Crea un usuario de al menos 3 caracteres';
+    if (!regName.trim()) errs.name = 'Ingresa tu nombre o familia';
+    if (!cleanPhone || cleanPhone.length !== 9) {
+      errs.phone = 'Ingresa un celular válido de 9 dígitos';
     }
-    if (!regPassword.trim() || regPassword.trim().length < 3) {
-      errs.password = 'La contraseña debe tener al menos 3 caracteres';
+    if (!regDistrict.trim()) errs.district = 'Selecciona tu distrito en Tacna';
+    if (!regAddress.trim()) errs.address = 'Indica tu dirección exacta de entrega';
+    if (!regPassword.trim() || regPassword.trim().length < 6) {
+      errs.password = 'La contraseña debe tener al menos 6 caracteres o dígitos';
+    } else if (regPassword !== regConfirmPassword) {
+      errs.confirmPassword = 'Las contraseñas no coinciden';
     }
 
     if (Object.keys(errs).length > 0) {
@@ -91,7 +98,7 @@ export const LoginScreen: React.FC = () => {
       // 1. Crear cliente en libreta de clientes
       const newCustomer = addCustomer({
         name: regName.trim(),
-        phone: regPhone.trim(),
+        phone: cleanPhone,
         deliveryAddress: regAddress.trim(),
         district: regDistrict.trim(),
         customerType: regCustomerType,
@@ -100,12 +107,13 @@ export const LoginScreen: React.FC = () => {
       });
 
       // 2. Registrar cuenta de acceso en el sistema de autenticación
+      // Usuario asignado al número de celular
       const newAccount = {
         id: `user-cust-${Date.now()}`,
-        username: regUsername.trim().toLowerCase(),
+        username: cleanPhone,
         password: regPassword.trim(),
         name: regName.trim(),
-        phone: regPhone.trim(),
+        phone: cleanPhone,
         role: 'CLIENT' as const,
         customerId: newCustomer.id,
         deliveryAddress: regAddress.trim(),
@@ -158,14 +166,6 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
-  // Helper para rellenar campos en modo desarrollo/pruebas sin bypassear la autenticación
-  const handleSelectDemoCredentials = (userValue: string, passValue: string) => {
-    hapticSelection();
-    setIdentifier(userValue);
-    setPassword(passValue);
-    setErrorMessage(null);
-  };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
@@ -205,8 +205,8 @@ export const LoginScreen: React.FC = () => {
               </View>
             )}
 
-            {/* Campo: Usuario / Correo */}
-            <Text style={styles.inputLabel}>Usuario o Correo Electrónico</Text>
+            {/* Campo: Usuario / Celular / Correo */}
+            <Text style={styles.inputLabel}>Usuario, Celular o Correo</Text>
             <View style={styles.inputWrapper}>
               <Ionicons
                 name="person-outline"
@@ -216,7 +216,7 @@ export const LoginScreen: React.FC = () => {
               />
               <TextInput
                 style={styles.textInput}
-                placeholder="Ej. distribuidor o donpepe@bodega.com"
+                placeholder="Ingresa tu celular, usuario o correo"
                 placeholderTextColor={COLORS.textMuted}
                 value={identifier}
                 onChangeText={(val) => {
@@ -225,7 +225,6 @@ export const LoginScreen: React.FC = () => {
                 }}
                 autoCapitalize="none"
                 autoCorrect={false}
-                keyboardType="email-address"
               />
             </View>
 
@@ -263,14 +262,6 @@ export const LoginScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Aviso de RBAC Inteligente */}
-            <View style={styles.rbacNoticeRow}>
-              <Ionicons name="shield-checkmark-outline" size={16} color={COLORS.primary} />
-              <Text style={styles.rbacNoticeText}>
-                Acceso RBAC: El sistema detectará automáticamente tu perfil (Distribuidor, Cliente o Admin).
-              </Text>
-            </View>
-
             {/* Botón Principal de Acceso */}
             <TouchableOpacity
               style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
@@ -287,136 +278,20 @@ export const LoginScreen: React.FC = () => {
                 </>
               )}
             </TouchableOpacity>
-          </View>
 
-          {/* Tarjeta de Auto-Registro para Nuevos Clientes (B2B / B2C) */}
-          <View style={styles.registerBox}>
-            <View style={styles.registerBoxHeader}>
-              <Ionicons name="sparkles" size={18} color={COLORS.primary} />
-              <Text style={styles.registerBoxTitle}>¿Eres un nuevo cliente o negocio?</Text>
+            {/* Enlace Limpio para Nuevos Clientes */}
+            <View style={styles.registerLinkRow}>
+              <Text style={styles.registerPromptText}>¿No tienes una cuenta?</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  hapticImpact('light');
+                  setIsRegisterModalVisible(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.registerActionLink}>Regístrate como cliente</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.registerBoxDesc}>
-              Regístrate en 1 minuto como Comercio (B2B) u Hogar (B2C) para realizar pedidos directos.
-            </Text>
-            <TouchableOpacity
-              style={styles.registerBoxBtn}
-              onPress={() => {
-                hapticImpact('light');
-                setIsRegisterModalVisible(true);
-              }}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="person-add-outline" size={16} color={COLORS.primary} />
-              <Text style={styles.registerBoxBtnText}>Registrarme como Cliente</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Acordeón de Cuentas de Demostración para Pruebas Rápidas */}
-          <View style={styles.demoHelperContainer}>
-            <TouchableOpacity
-              style={styles.demoHelperHeader}
-              onPress={() => {
-                setIsDemoSheetOpen(!isDemoSheetOpen);
-                hapticImpact('light');
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={styles.demoHelperHeaderLeft}>
-                <Ionicons name="key-outline" size={16} color={COLORS.secondary} />
-                <Text style={styles.demoHelperTitle}>
-                  Credenciales de Demostración para Pruebas
-                </Text>
-              </View>
-              <Ionicons
-                name={isDemoSheetOpen ? 'chevron-up' : 'chevron-down'}
-                size={18}
-                color={COLORS.textSecondary}
-              />
-            </TouchableOpacity>
-
-            {isDemoSheetOpen && (
-              <View style={styles.demoHelperBody}>
-                <Text style={styles.demoHelperDesc}>
-                  Toca una cuenta para completar automáticamente el formulario y probar la autenticación real:
-                </Text>
-
-                {/* Cuenta Distribuidor */}
-                <TouchableOpacity
-                  style={styles.demoCredentialItem}
-                  onPress={() => handleSelectDemoCredentials('distribuidor', '123')}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.demoItemBadgeDist}>
-                    <Ionicons name="bicycle" size={14} color="#FFFFFF" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.demoItemTitle}>Rol: Distribuidor / Conductor</Text>
-                    <Text style={styles.demoItemDetails}>
-                      Usuario: <Text style={styles.boldText}>distribuidor</Text> • Clave: <Text style={styles.boldText}>123</Text>
-                    </Text>
-                    <Text style={styles.demoItemSub}>Carlos Mendoza (Camión 02)</Text>
-                  </View>
-                  <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
-                </TouchableOpacity>
-
-                {/* Cuenta Cliente 1 */}
-                <TouchableOpacity
-                  style={styles.demoCredentialItem}
-                  onPress={() => handleSelectDemoCredentials('cliente', '123')}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.demoItemBadgeClient}>
-                    <Ionicons name="storefront" size={14} color="#FFFFFF" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.demoItemTitle}>Rol: Cliente Final</Text>
-                    <Text style={styles.demoItemDetails}>
-                      Usuario: <Text style={styles.boldText}>cliente</Text> • Clave: <Text style={styles.boldText}>123</Text>
-                    </Text>
-                    <Text style={styles.demoItemSub}>Bodega Don Pepe (Tacna Cercado)</Text>
-                  </View>
-                  <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
-                </TouchableOpacity>
-
-                {/* Cuenta Cliente 2 */}
-                <TouchableOpacity
-                  style={styles.demoCredentialItem}
-                  onPress={() => handleSelectDemoCredentials('restaurante', '123')}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.demoItemBadgeClient}>
-                    <Ionicons name="restaurant" size={14} color="#FFFFFF" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.demoItemTitle}>Rol: Cliente Final (Restaurante)</Text>
-                    <Text style={styles.demoItemDetails}>
-                      Usuario: <Text style={styles.boldText}>restaurante</Text> • Clave: <Text style={styles.boldText}>123</Text>
-                    </Text>
-                    <Text style={styles.demoItemSub}>Restaurante El Buen Sabor</Text>
-                  </View>
-                  <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
-                </TouchableOpacity>
-
-                {/* Cuenta Administrador */}
-                <TouchableOpacity
-                  style={styles.demoCredentialItem}
-                  onPress={() => handleSelectDemoCredentials('admin', 'admin')}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.demoItemBadgeAdmin}>
-                    <Ionicons name="settings-sharp" size={14} color="#FFFFFF" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.demoItemTitle}>Rol: Administrador General</Text>
-                    <Text style={styles.demoItemDetails}>
-                      Usuario: <Text style={styles.boldText}>admin</Text> • Clave: <Text style={styles.boldText}>admin</Text>
-                    </Text>
-                    <Text style={styles.demoItemSub}>Gestión de Cuentas y Flota</Text>
-                  </View>
-                  <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
-                </TouchableOpacity>
-              </View>
-            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -451,87 +326,23 @@ export const LoginScreen: React.FC = () => {
               contentContainerStyle={styles.regModalScroll}
               keyboardShouldPersistTaps="handled"
             >
-              <Text style={styles.regSubtitle}>
-                Crea tu cuenta para comprar y solicitar despachos a tu domicilio o local comercial.
-              </Text>
-
-              {/* Selector de Perfil B2B vs B2C */}
-              <Text style={styles.regFieldLabel}>¿Qué tipo de cliente eres? *</Text>
-              <View style={styles.regTypeRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.regTypeBtn,
-                    regCustomerType === 'B2B' && styles.regTypeBtnActiveB2B,
-                  ]}
-                  onPress={() => {
-                    setRegCustomerType('B2B');
-                    hapticSelection();
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name="storefront"
-                    size={16}
-                    color={regCustomerType === 'B2B' ? '#1D4ED8' : COLORS.textSecondary}
-                  />
-                  <Text
-                    style={[
-                      styles.regTypeText,
-                      regCustomerType === 'B2B' && styles.regTypeTextActiveB2B,
-                    ]}
-                  >
-                    Negocio (B2B)
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.regTypeBtn,
-                    regCustomerType === 'B2C' && styles.regTypeBtnActiveB2C,
-                  ]}
-                  onPress={() => {
-                    setRegCustomerType('B2C');
-                    hapticSelection();
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name="person"
-                    size={16}
-                    color={regCustomerType === 'B2C' ? '#047857' : COLORS.textSecondary}
-                  />
-                  <Text
-                    style={[
-                      styles.regTypeText,
-                      regCustomerType === 'B2C' && styles.regTypeTextActiveB2C,
-                    ]}
-                  >
-                    Hogar (B2C)
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Nombre o Razón Social */}
+              {/* Nombre Completo */}
               <CustomInput
-                label="Nombre Completo o Razón Social"
-                placeholder={
-                  regCustomerType === 'B2B'
-                    ? 'Ej. Bodega La Esquina / Restaurante El Sol'
-                    : 'Ej. Juan Pérez / Familia Gómez'
-                }
+                label="Nombre Completo (Titular o Familia)"
+                placeholder="Ej. Juan Pérez / Familia Gómez"
                 value={regName}
                 onChangeText={(t) => {
                   setRegName(t);
                   if (regErrors.name) setRegErrors((p) => ({ ...p, name: '' }));
                 }}
                 required
-                icon={regCustomerType === 'B2B' ? 'business-outline' : 'person-outline'}
+                icon="person-outline"
                 error={regErrors.name}
               />
 
-              {/* Teléfono / Celular */}
+              {/* Teléfono / Celular (Será su Usuario de Login) */}
               <CustomInput
-                label="Teléfono Celular / WhatsApp"
+                label="Teléfono Celular (Será tu Usuario de Acceso)"
                 placeholder="Ej. 987654321"
                 value={regPhone}
                 onChangeText={(t) => {
@@ -545,79 +356,73 @@ export const LoginScreen: React.FC = () => {
                 error={regErrors.phone}
               />
 
-              {/* Distrito */}
-              <CustomInput
-                label="Distrito o Ciudad"
-                placeholder="Ej. Tacna, Pocollay, Gregorio Albarracín..."
-                value={regDistrict}
-                onChangeText={(t) => {
-                  setRegDistrict(t);
-                  if (regErrors.district) setRegErrors((p) => ({ ...p, district: '' }));
+              {/* Distrito con Combobox Elegante */}
+              <Text style={styles.comboboxLabel}>
+                Distrito de Entrega en Tacna <Text style={{ color: COLORS.danger }}>*</Text>
+              </Text>
+              <TouchableOpacity
+                style={[styles.districtComboboxPill, regErrors.district ? styles.districtComboboxError : undefined]}
+                onPress={() => {
+                  hapticImpact('light');
+                  setIsDistrictModalOpen(true);
                 }}
-                required
-                icon="navigate-circle-outline"
-                error={regErrors.district}
-              />
-
-              {/* Chips Rápidos de Distritos */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                {AVAILABLE_DISTRICTS.slice(0, 6).map((d) => (
-                  <TouchableOpacity
-                    key={d}
-                    style={[styles.regDistChip, regDistrict === d && styles.regDistChipActive]}
-                    onPress={() => setRegDistrict(d)}
-                  >
-                    <Text style={[styles.regDistChipText, regDistrict === d && styles.regDistChipTextActive]}>
-                      {d}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+                activeOpacity={0.8}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                  <Ionicons name="location" size={17} color={COLORS.primary} />
+                  <Text style={styles.districtComboboxValue}>
+                    {regDistrict || 'Selecciona un distrito'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-down" size={17} color="#64748B" />
+              </TouchableOpacity>
+              {regErrors.district ? (
+                <Text style={styles.regErrorTextHelper}>{regErrors.district}</Text>
+              ) : null}
 
               {/* Dirección de Entrega */}
               <CustomInput
-                label="Dirección de Entrega"
-                placeholder="Ej. Av. Bolognesi 845, Int. 2"
+                label="Dirección de Entrega Exacta"
+                placeholder="Ej. Av. Bolognesi 845, Mz. B Lote 12"
                 value={regAddress}
                 onChangeText={(t) => {
                   setRegAddress(t);
                   if (regErrors.address) setRegErrors((p) => ({ ...p, address: '' }));
                 }}
                 required
-                icon="location-outline"
+                icon="home-outline"
                 error={regErrors.address}
               />
 
-              {/* Credenciales de Acceso */}
-              <View style={styles.regCredentialsBox}>
-                <Text style={styles.regCredentialsTitle}>Crea tus Credenciales de Acceso:</Text>
-                
-                <CustomInput
-                  label="Nombre de Usuario"
-                  placeholder="Ej. mimercado / maria123"
-                  value={regUsername}
-                  onChangeText={(t) => {
-                    setRegUsername(t);
-                    if (regErrors.username) setRegErrors((p) => ({ ...p, username: '' }));
-                  }}
-                  required
-                  icon="at-outline"
-                  error={regErrors.username}
-                />
+              {/* Contraseña */}
+              <CustomInput
+                label="Contraseña de Acceso (Mínimo 6 dígitos)"
+                placeholder="Crea tu clave o PIN de 6 dígitos"
+                value={regPassword}
+                onChangeText={(t) => {
+                  setRegPassword(t);
+                  if (regErrors.password) setRegErrors((p) => ({ ...p, password: '' }));
+                }}
+                required
+                secureTextEntry
+                icon="lock-closed-outline"
+                error={regErrors.password}
+              />
 
-                <CustomInput
-                  label="Contraseña"
-                  placeholder="Mínimo 3 caracteres"
-                  value={regPassword}
-                  onChangeText={(t) => {
-                    setRegPassword(t);
-                    if (regErrors.password) setRegErrors((p) => ({ ...p, password: '' }));
-                  }}
-                  required
-                  icon="lock-closed-outline"
-                  error={regErrors.password}
-                />
-              </View>
+              {/* Confirmación de Contraseña */}
+              <CustomInput
+                label="Confirmar Contraseña"
+                placeholder="Repite tu clave o PIN de 6 dígitos"
+                value={regConfirmPassword}
+                onChangeText={(t) => {
+                  setRegConfirmPassword(t);
+                  if (regErrors.confirmPassword) setRegErrors((p) => ({ ...p, confirmPassword: '' }));
+                }}
+                required
+                secureTextEntry
+                icon="shield-checkmark-outline"
+                error={regErrors.confirmPassword}
+              />
 
               {/* Botón de Confirmación */}
               <TouchableOpacity
@@ -638,6 +443,72 @@ export const LoginScreen: React.FC = () => {
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Modal Desplegable de Selección de Distrito (Combobox) */}
+      <Modal
+        visible={isDistrictModalOpen}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsDistrictModalOpen(false)}
+      >
+        <View style={styles.districtModalBackdrop}>
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            activeOpacity={1}
+            onPress={() => setIsDistrictModalOpen(false)}
+          />
+          <View style={styles.districtModalSheet}>
+            <View style={styles.districtModalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="location" size={18} color={COLORS.primary} />
+                <Text style={styles.districtModalTitle}>Distritos de Cobertura Tacna</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setIsDistrictModalOpen(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={20} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
+              {availableDistricts.map((d) => {
+                const isSelected = regDistrict === d;
+                return (
+                  <TouchableOpacity
+                    key={d}
+                    style={[
+                      styles.districtOptionItem,
+                      isSelected && styles.districtOptionItemActive,
+                    ]}
+                    onPress={() => {
+                      hapticSelection();
+                      setRegDistrict(d);
+                      if (regErrors.district) setRegErrors((p) => ({ ...p, district: '' }));
+                      setIsDistrictModalOpen(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={isSelected ? 'radio-button-on' : 'radio-button-off'}
+                      size={18}
+                      color={isSelected ? COLORS.primary : '#94A3B8'}
+                    />
+                    <Text
+                      style={[
+                        styles.districtOptionText,
+                        isSelected && styles.districtOptionTextActive,
+                      ]}
+                    >
+                      {d}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -752,23 +623,6 @@ const styles = StyleSheet.create({
   passwordToggleBtn: {
     padding: 6,
   },
-  rbacNoticeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    borderRadius: RADIUS.md,
-    padding: 10,
-    gap: 8,
-    marginTop: 6,
-    marginBottom: 16,
-  },
-  rbacNoticeText: {
-    fontSize: 11,
-    color: COLORS.primary,
-    fontWeight: '600',
-    flex: 1,
-    lineHeight: 15,
-  },
   submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -787,43 +641,19 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
   },
-  registerBox: {
-    marginTop: 18,
-    backgroundColor: '#EFF6FF',
-    borderRadius: RADIUS.md,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-  },
-  registerBoxHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  registerBoxTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: COLORS.primary,
-  },
-  registerBoxDesc: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    lineHeight: 16,
-    marginBottom: 10,
-  },
-  registerBoxBtn: {
+  registerLinkRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    borderRadius: RADIUS.sm,
-    paddingVertical: 10,
     gap: 6,
+    marginTop: 18,
+    paddingVertical: 4,
   },
-  registerBoxBtnText: {
+  registerPromptText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+  },
+  registerActionLink: {
     fontSize: 13,
     fontWeight: '800',
     color: COLORS.primary,
@@ -858,92 +688,87 @@ const styles = StyleSheet.create({
   regModalScroll: {
     padding: 18,
   },
-  regSubtitle: {
+  comboboxLabel: {
     fontSize: 12,
-    color: COLORS.textSecondary,
-    marginBottom: 14,
-    lineHeight: 17,
-  },
-  regFieldLabel: {
-    fontSize: 13,
     fontWeight: '700',
-    color: COLORS.secondary,
-    marginBottom: 8,
+    color: COLORS.textSecondary,
+    marginBottom: 6,
+    marginTop: 6,
   },
-  regTypeRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
-  },
-  regTypeBtn: {
-    flex: 1,
+  districtComboboxPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: RADIUS.sm,
+    justifyContent: 'space-between',
     backgroundColor: '#F8FAFC',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    gap: 6,
-  },
-  regTypeBtnActiveB2B: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#2563EB',
-  },
-  regTypeBtnActiveB2C: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#059669',
-  },
-  regTypeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  regTypeTextActiveB2B: {
-    color: '#1D4ED8',
-    fontWeight: '800',
-  },
-  regTypeTextActiveB2C: {
-    color: '#047857',
-    fontWeight: '800',
-  },
-  regDistChip: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    marginRight: 6,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  regDistChipActive: {
-    backgroundColor: '#EFF6FF',
-    borderColor: COLORS.primary,
-  },
-  regDistChipText: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-  },
-  regDistChipTextActive: {
-    color: COLORS.primary,
-    fontWeight: '700',
-  },
-  regCredentialsBox: {
-    backgroundColor: '#F8FAFC',
-    padding: 12,
     borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginTop: 4,
-    marginBottom: 14,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12,
+    height: TOUCH_TARGET.buttonHeight,
+    marginBottom: 10,
   },
-  regCredentialsTitle: {
-    fontSize: 12,
+  districtComboboxError: {
+    borderColor: COLORS.danger,
+    backgroundColor: '#FEF2F2',
+  },
+  districtComboboxValue: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  regErrorTextHelper: {
+    fontSize: 11,
+    color: COLORS.danger,
+    marginTop: -4,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  districtModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  districtModalSheet: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 18,
+  },
+  districtModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    marginBottom: 8,
+  },
+  districtModalTitle: {
+    fontSize: 15,
     fontWeight: '800',
     color: COLORS.secondary,
-    marginBottom: 10,
+  },
+  districtOptionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: RADIUS.sm,
+  },
+  districtOptionItemActive: {
+    backgroundColor: '#EFF6FF',
+  },
+  districtOptionText: {
+    fontSize: 13.5,
+    color: COLORS.textPrimary,
+    fontWeight: '600',
+  },
+  districtOptionTextActive: {
+    color: COLORS.primary,
+    fontWeight: '800',
   },
   confirmRegBtn: {
     flexDirection: 'row',
@@ -963,95 +788,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: '#FFFFFF',
-  },
-  /* Helper de Demostración */
-  demoHelperContainer: {
-    marginTop: 20,
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    overflow: 'hidden',
-  },
-  demoHelperHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#F8FAFC',
-  },
-  demoHelperHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  demoHelperTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.secondary,
-  },
-  demoHelperBody: {
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    gap: 8,
-  },
-  demoHelperDesc: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    marginBottom: 4,
-    lineHeight: 15,
-  },
-  demoCredentialItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: RADIUS.sm,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    gap: 10,
-  },
-  demoItemBadgeDist: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  demoItemBadgeClient: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#059669',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  demoItemBadgeAdmin: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#475569',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  demoItemTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  demoItemDetails: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    marginTop: 1,
-  },
-  demoItemSub: {
-    fontSize: 10,
-    color: COLORS.textMuted,
-  },
-  boldText: {
-    fontWeight: '800',
-    color: COLORS.textPrimary,
   },
 });

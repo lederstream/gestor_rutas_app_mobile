@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * FORMATTERS & LOGISTICS HELPERS
- * Clean formatting utilities for currency, dates, quantities and phones
- * ============================================================================
- */
-
 import { Order, OrderStatistics, RouteLoadItem } from '../models/Order';
 
 /**

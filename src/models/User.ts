@@ -1,9 +1,4 @@
-/**
- * ============================================================================
- * DOMAIN MODEL: User.ts
- * Entidad Usuario y Sistema de Roles (Distribuidor / Conductor vs Cliente Final)
- * ============================================================================
- */
+import { ProductCategory } from './Order';
 
 export type UserRole = 'ADMIN' | 'DISTRIBUTOR' | 'CLIENT';
 
@@ -15,9 +10,11 @@ export interface User {
   role: UserRole;
   email?: string;
   avatar?: string;
-  // Atributos de Distribuidor / Conductor
+  // Atributos del Distribuidor Independiente
   vehicleInfo?: string;
-  driverCode?: string;
+  driverCode?: string; // Código único de Distribuidor 
+  specialtyCategory?: ProductCategory; // Rubro especializado
+  specialtyLabel?: string; // "Distribuidor de Agua Purificada"
   // Atributos de Cliente Final
   customerId?: string;
   deliveryAddress?: string;
@@ -28,33 +25,69 @@ export interface User {
 }
 
 /**
- * Cuenta registrada en el sistema de autenticación (Credenciales + Perfil)
- * En una infraestructura real con backend, el password se valida hasheado en el servidor
- */
+ * Cuenta registrada en el sistema de autenticación (Credenciales + Perfil)*/
 export interface UserAccount extends User {
   password: string;
 }
 
-/**
- * Cuentas iniciales registradas en el sistema para RBAC
- */
 export const REGISTERED_ACCOUNTS: UserAccount[] = [
   {
     id: 'user-dist-1',
     username: 'distribuidor',
     email: 'carlos@distribucion.com',
-    password: '123',
+    password: '123123',
     name: 'Carlos Mendoza',
     phone: '987111222',
     role: 'DISTRIBUTOR',
     vehicleInfo: 'Camión 02 (Placa BZ-492)',
-    driverCode: 'CHO-02',
+    driverCode: 'DIST-01',
+    specialtyCategory: 'WATER',
+    specialtyLabel: 'Distribuidor de Agua Purificada',
+  },
+  {
+    id: 'user-dist-2',
+    username: 'dist_gas',
+    email: 'manuel@gasdistribucion.com',
+    password: '123123',
+    name: 'Manuel Choque',
+    phone: '952334455',
+    role: 'DISTRIBUTOR',
+    vehicleInfo: 'Camión 05 (Placa Z1B-890)',
+    driverCode: 'DIST-02',
+    specialtyCategory: 'GAS',
+    specialtyLabel: 'Distribuidor de Gas GLP',
+  },
+  {
+    id: 'user-dist-3',
+    username: 'dist_pan',
+    email: 'rosa@panaderiadist.com',
+    password: '123123',
+    name: 'Rosa Quispe',
+    phone: '952889900',
+    role: 'DISTRIBUTOR',
+    vehicleInfo: 'Furgón 01 (Placa V3A-120)',
+    driverCode: 'DIST-03',
+    specialtyCategory: 'BAKERY',
+    specialtyLabel: 'Distribuidora de Panadería',
+  },
+  {
+    id: 'user-dist-4',
+    username: 'dist_limpieza',
+    email: 'roberto@limpiezadist.com',
+    password: '123123',
+    name: 'Roberto Flores',
+    phone: '952778899',
+    role: 'DISTRIBUTOR',
+    vehicleInfo: 'Camioneta 03 (Placa T2X-450)',
+    driverCode: 'DIST-04',
+    specialtyCategory: 'CLEANING',
+    specialtyLabel: 'Distribuidor de Productos de Limpieza',
   },
   {
     id: 'user-cust-1',
     username: 'cliente',
     email: 'donpepe@bodega.com',
-    password: '123',
+    password: '123123',
     name: 'Bodega Don Pepe',
     phone: '987654321',
     role: 'CLIENT',
@@ -69,7 +102,7 @@ export const REGISTERED_ACCOUNTS: UserAccount[] = [
     id: 'user-cust-2',
     username: 'restaurante',
     email: 'buensabor@restaurante.com',
-    password: '123',
+    password: '123123',
     name: 'Restaurante El Buen Sabor',
     phone: '991234567',
     role: 'CLIENT',
@@ -84,7 +117,7 @@ export const REGISTERED_ACCOUNTS: UserAccount[] = [
     id: 'user-admin-1',
     username: 'admin',
     email: 'admin@gestor.com',
-    password: 'admin',
+    password: '123123',
     name: 'Administrador General',
     phone: '900000000',
     role: 'ADMIN',

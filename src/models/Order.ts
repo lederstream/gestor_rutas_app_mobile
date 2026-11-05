@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * DOMAIN MODELS: Gestor de Rutas Móvil
- * Sistema de Logística y Distribución Inmediata
- * ============================================================================
- */
-
 export type OrderStatus = 'PENDING' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
 
 export type OrderPriority = 'URGENT' | 'HIGH' | 'NORMAL';

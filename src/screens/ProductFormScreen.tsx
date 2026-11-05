@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * SCREEN: ProductFormScreen.tsx
- * Formulario para Crear o Editar Producto en el Catálogo
- * ============================================================================
- */
-
 import React, { useState, useEffect } from 'react';
 import {
   View,

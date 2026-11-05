@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * DESIGN SYSTEM & CONSTANTS: Gestor de Rutas Móvil
- * Tokens de diseño, paleta, configuración de categorías y distritos
- * ============================================================================
- */
-
 import { ProductCategory, OrderStatus, OrderPriority, PaymentMethod } from '../models/Order';
 
 export const COLORS = {
@@ -238,16 +231,9 @@ export const AVAILABLE_DISTRICTS = [
   'Pocollay',
   'Alto de la Alianza',
   'Ciudad Nueva',
-  'San Borja',
-  'Santiago de Surco',
-  'Miraflores',
-  'San Isidro',
-  'La Molina',
-  'Ate Vitarte',
-  'Lince',
-  'Magdalena del Mar',
-  'Jesús María',
-  'Los Olivos',
+  'Calana',
+  'Pachía',
+  'La Yarada - Los Palos',
 ];
 
 export const DEFAULT_DRIVERS = [
@@ -258,7 +244,7 @@ export const DEFAULT_DRIVERS = [
 ];
 
 export const DISTRICT_COORDINATES: Record<string, { latitude: number; longitude: number }> = {
-  // Distritos Principales - Tacna
+  // Distritos Oficiales con Cobertura de Despacho - Provincia de Tacna
   'Tacna (Cercado)': { latitude: -18.0139, longitude: -70.2519 },
   'Tacna': { latitude: -18.0139, longitude: -70.2519 },
   'Coronel Gregorio Albarracín': { latitude: -18.0450, longitude: -70.2600 },
@@ -266,18 +252,9 @@ export const DISTRICT_COORDINATES: Record<string, { latitude: number; longitude:
   'Pocollay': { latitude: -18.0050, longitude: -70.2300 },
   'Alto de la Alianza': { latitude: -17.9980, longitude: -70.2520 },
   'Ciudad Nueva': { latitude: -17.9920, longitude: -70.2450 },
-
-  // Lima Metropolitana
-  'San Borja': { latitude: -12.0984, longitude: -77.0016 },
-  'Santiago de Surco': { latitude: -12.1355, longitude: -76.9961 },
-  'Miraflores': { latitude: -12.1192, longitude: -77.0298 },
-  'San Isidro': { latitude: -12.0969, longitude: -77.0347 },
-  'La Molina': { latitude: -12.0797, longitude: -76.9458 },
-  'Ate Vitarte': { latitude: -12.0450, longitude: -76.9200 },
-  'Lince': { latitude: -12.0838, longitude: -77.0346 },
-  'Magdalena del Mar': { latitude: -12.0924, longitude: -77.0706 },
-  'Jesús María': { latitude: -12.0747, longitude: -77.0483 },
-  'Los Olivos': { latitude: -11.9793, longitude: -77.0711 },
+  'Calana': { latitude: -17.9700, longitude: -70.1900 },
+  'Pachía': { latitude: -17.8900, longitude: -70.1500 },
+  'La Yarada - Los Palos': { latitude: -18.1500, longitude: -70.3800 },
 };
 
 export const SPACING = {

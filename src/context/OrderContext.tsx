@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * CONTEXT API: OrderContext.tsx
- * State management with AsyncStorage Persistence and Dynamic Priority
- * ============================================================================
- */
-
 import React, {
   createContext,
   useContext,
@@ -22,6 +15,7 @@ import {
   OrderStatistics,
   RouteLoadItem,
 } from '../models/Order';
+import { User } from '../models/User';
 import {
   orderReducer,
   initialOrderState,
@@ -31,7 +25,7 @@ import { calculateOrderStatistics, calculateRouteLoad } from '../utils/formatter
 import { getDynamicPriority } from '../utils/priorityHelper';
 import { INITIAL_ORDERS } from '../utils/mockData';
 
-const STORAGE_KEY = '@gestor_rutas_orders_v3_tacna';
+const STORAGE_KEY = '@gestor_rutas_orders_v5_multi_dist_tacna';
 
 export interface OrderContextType {
   state: OrderState;
@@ -41,6 +35,10 @@ export interface OrderContextType {
   routeLoad: RouteLoadItem[];
   filter: OrderFilter;
   isLoading: boolean;
+  // Getters para pedidos según usuario
+  getOrdersForUser: (user: User | null) => Order[];
+  getStatisticsForUser: (user: User | null) => OrderStatistics;
+  getRouteLoadForUser: (user: User | null) => RouteLoadItem[];
   // Actions
   addOrder: (order: Order) => void;
   updateOrder: (order: Order) => void;
@@ -239,6 +237,44 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
     [enrichedOrders]
   );
 
+  // Obtener pedidos dinámicos asociados al usuario según su rol y especialidad
+  const getOrdersForUser = useCallback(
+    (currentUser: User | null): Order[] => {
+      if (!currentUser) return [];
+      if (currentUser.role === 'DISTRIBUTOR') {
+        const specialty = currentUser.specialtyCategory || 'WATER';
+        return enrichedOrders.filter((o) => o.category === specialty);
+      }
+      if (currentUser.role === 'CLIENT') {
+        return enrichedOrders.filter(
+          (o) =>
+            (currentUser.customerId && o.customerId === currentUser.customerId) ||
+            o.customerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()
+        );
+      }
+      return enrichedOrders;
+    },
+    [enrichedOrders]
+  );
+
+  // Métricas de pedidos según usuario
+  const getStatisticsForUser = useCallback(
+    (currentUser: User | null): OrderStatistics => {
+      const userOrders = getOrdersForUser(currentUser);
+      return calculateOrderStatistics(userOrders);
+    },
+    [getOrdersForUser]
+  );
+
+  // Calcular carga física en camión para el usuario
+  const getRouteLoadForUser = useCallback(
+    (currentUser: User | null): RouteLoadItem[] => {
+      const userOrders = getOrdersForUser(currentUser);
+      return calculateRouteLoad(userOrders);
+    },
+    [getOrdersForUser]
+  );
+
   const contextValue: OrderContextType = useMemo(
     () => ({
       state,
@@ -248,6 +284,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
       routeLoad,
       filter: state.filter,
       isLoading: state.isLoading,
+      getOrdersForUser,
+      getStatisticsForUser,
+      getRouteLoadForUser,
       addOrder,
       updateOrder,
       changeStatus,
@@ -266,6 +305,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
       filteredOrders,
       statistics,
       routeLoad,
+      getOrdersForUser,
+      getStatisticsForUser,
+      getRouteLoadForUser,
       addOrder,
       updateOrder,
       changeStatus,

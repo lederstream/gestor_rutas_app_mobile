@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * COMPONENT: LocationPickerModal.tsx
- * Modal interactivo para colocar, mover y confirmar PINES de entrega en el mapa
- * ============================================================================
- */
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,

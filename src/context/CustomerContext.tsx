@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * CONTEXT: CustomerContext.tsx
- * Gestión del estado de Clientes con persistencia en AsyncStorage
- * ============================================================================
- */
-
 import React, {
   createContext,
   useContext,
@@ -17,7 +10,7 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Customer, INITIAL_CUSTOMERS } from '../models/Customer';
 
-const CUSTOMERS_STORAGE_KEY = '@gestor_rutas_customers_v2_tacna';
+const CUSTOMERS_STORAGE_KEY = '@gestor_rutas_customers_v3_tacna';
 
 export interface CustomerContextType {
   customers: Customer[];

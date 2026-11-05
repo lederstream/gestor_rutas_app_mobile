@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * ORDER COMPONENT: StatusBadge.tsx
- * Visual pill badge representing order distribution state with icons
- * ============================================================================
- */
-
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

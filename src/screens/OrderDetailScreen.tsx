@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * SCREEN: OrderDetailScreen.tsx
- * Complete logistics audit, customer contact actions, items breakdown & state transitions
- * ============================================================================
- */
-
 import React, { useState } from 'react';
 import {
   View,
@@ -59,13 +52,14 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const order = getOrderById(orderId);
 
-  // Estados para Modal de Edición de Solicitud (Rúbrica: Detalle / Editar Solicitud)
+  // Estados para modal de edición de pedido
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editPriority, setEditPriority] = useState<OrderPriority>(order?.priority || 'NORMAL');
   const [editAddress, setEditAddress] = useState(order?.deliveryAddress || '');
   const [editReference, setEditReference] = useState(order?.addressReference || '');
   const [editScheduledTime, setEditScheduledTime] = useState(order?.scheduledTime || '');
   const [editNotes, setEditNotes] = useState(order?.notes || '');
+  const [editAmountPaid, setEditAmountPaid] = useState<string>('');
 
   const handleOpenEditModal = () => {
     if (!order) return;
@@ -74,6 +68,7 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     setEditReference(order.addressReference || '');
     setEditScheduledTime(order.scheduledTime || '');
     setEditNotes(order.notes || '');
+    setEditAmountPaid(order.amountPaid ? String(order.amountPaid) : '');
     hapticImpact('light');
     setIsEditModalVisible(true);
   };
@@ -87,6 +82,11 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
 
     hapticImpact('medium');
+
+    const parsedCash = parseFloat(editAmountPaid);
+    const validCash = !isNaN(parsedCash) && parsedCash >= order.totalAmount ? parsedCash : undefined;
+    const computedChange = validCash && validCash > order.totalAmount ? validCash - order.totalAmount : undefined;
+
     updateOrder({
       ...order,
       priority: editPriority,
@@ -94,6 +94,8 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       addressReference: editReference.trim() || undefined,
       scheduledTime: editScheduledTime.trim() || undefined,
       notes: editNotes.trim() || undefined,
+      amountPaid: order.paymentMethod === 'CASH' ? validCash : undefined,
+      changeDue: order.paymentMethod === 'CASH' ? computedChange : undefined,
     });
 
     hapticNotification('success');
@@ -112,18 +114,6 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     updateOrder({
       ...order,
       returnedContainers: next,
-    });
-  };
-
-  const handleUpdateCashPaid = (text: string) => {
-    if (!order) return;
-    const num = parseFloat(text);
-    const paid = isNaN(num) ? undefined : num;
-    const change = paid && paid > order.totalAmount ? paid - order.totalAmount : undefined;
-    updateOrder({
-      ...order,
-      amountPaid: paid,
-      changeDue: change,
     });
   };
 
@@ -220,13 +210,25 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const handleSetStatus = (newStatus: OrderStatus) => {
     if (newStatus === 'DELIVERED') {
       Alert.alert(
-        'Confirmar Entrega Conforme',
-        `¿Confirmas la recepción satisfactoria de ${formatCurrency(order.totalAmount)} y entrega de productos?`,
+        'Confirmar Entrega Conforme 📦',
+        `Cliente: ${order.customerName}\n` +
+        `Total a cobrar: ${formatCurrency(order.totalAmount)} (${
+          order.paymentMethod === 'CASH'
+            ? '💵 Efectivo'
+            : order.paymentMethod === 'YAPE_PLIN'
+            ? '📱 Yape / Plin'
+            : '💳 POS / Transferencia'
+        })\n\n` +
+        `¿Confirmas la recepción satisfactoria de los productos y el cobro conforme?`,
         [
           { text: 'Cancelar', style: 'cancel' },
           {
             text: 'Sí, Confirmar Entrega',
-            onPress: () => updateOrderStatus(order.id, 'DELIVERED'),
+            style: 'default',
+            onPress: () => {
+              hapticImpact('heavy');
+              updateOrderStatus(order.id, 'DELIVERED');
+            },
           },
         ]
       );
@@ -239,11 +241,15 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {
             text: 'Sí, Anular',
             style: 'destructive',
-            onPress: () => updateOrderStatus(order.id, 'CANCELLED'),
+            onPress: () => {
+              hapticImpact('medium');
+              updateOrderStatus(order.id, 'CANCELLED');
+            },
           },
         ]
       );
     } else {
+      hapticImpact('medium');
       updateOrderStatus(order.id, newStatus);
     }
   };
@@ -268,11 +274,11 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
       <Header
         title={`Pedido ${order.orderCode}`}
-        subtitle={`Creado el ${formatDateTime(order.createdAt)}`}
+        subtitle={`${categoryConfig?.label.split(' ')[0] || 'Despacho'} • ${formatDateTime(order.createdAt)}`}
         showBackButton={true}
         onBackPress={() => navigation.goBack()}
         rightActionIcon={isAdmin ? "trash-outline" : undefined}
@@ -283,246 +289,152 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Status & Urgency Header Card */}
-        <View style={styles.statusBannerCard}>
-          <View style={styles.statusRow}>
-            <View>
-              <Text style={styles.statusBannerCaption}>Estado de Entrega</Text>
-              <View style={styles.badgesWrapper}>
-                <StatusBadge status={order.status} size="md" />
-                <PriorityBadge priority={order.priority} size="md" />
+        {/* TARJETA 1: DESTINATARIO, UBICACIÓN Y CONTACTO RÁPIDO */}
+        <View style={styles.card}>
+          <View style={styles.clientHeaderRow}>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <View style={styles.clientNameAndType}>
+                <Text style={styles.customerName} numberOfLines={1}>
+                  {order.customerName}
+                </Text>
+                <View
+                  style={[
+                    styles.customerTypeBadge,
+                    isB2BCustomer({ name: order.customerName })
+                      ? styles.customerTypeB2B
+                      : styles.customerTypeB2C,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.customerTypeBadgeText,
+                      isB2BCustomer({ name: order.customerName })
+                        ? { color: '#1D4ED8' }
+                        : { color: '#047857' },
+                    ]}
+                  >
+                    {isB2BCustomer({ name: order.customerName }) ? 'B2B' : 'B2C'}
+                  </Text>
+                </View>
               </View>
+              <Text style={styles.customerAddress} numberOfLines={2}>
+                📍 {order.deliveryAddress} ({order.district})
+              </Text>
+              {order.addressReference ? (
+                <Text style={styles.customerRef} numberOfLines={1}>
+                  Ref: {order.addressReference}
+                </Text>
+              ) : null}
             </View>
 
-            <View style={styles.categoryBadgeRight}>
-              <View
-                style={[
-                  styles.categoryCircle,
-                  { backgroundColor: categoryConfig?.bg || '#F1F5F9' },
-                ]}
-              >
-                <Ionicons
-                  name={categoryConfig?.icon as any}
-                  size={20}
-                  color={categoryConfig?.color || COLORS.primary}
-                />
-              </View>
-              <Text style={styles.categoryLabelText}>
-                {categoryConfig?.label.split(' ')[0]}
-              </Text>
+            <View style={styles.statusBadgesCol}>
+              <StatusBadge status={order.status} size="sm" />
+              <PriorityBadge priority={order.priority} size="sm" />
             </View>
           </View>
 
+          {/* Fila de 3 Acciones Rápidas Ergonómicas */}
+          <View style={styles.quickActionsRow}>
+            <TouchableOpacity
+              style={styles.quickGpsBtn}
+              onPress={handleOpenGoogleMaps}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="navigate" size={15} color="#FFFFFF" />
+              <Text style={styles.quickGpsBtnText}>GPS</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickContactBtn}
+              onPress={handleCallCustomer}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="call" size={15} color={COLORS.primary} />
+              <Text style={styles.quickContactBtnText}>Llamar</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.quickContactBtn, styles.quickWhatsappBtn]}
+              onPress={handleWhatsApp}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="logo-whatsapp" size={16} color="#16A34A" />
+              <Text style={[styles.quickContactBtnText, { color: '#16A34A' }]}>
+                WhatsApp
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Si ya fue entregado */}
           {order.deliveredAt && (
             <View style={styles.deliveredAtRow}>
               <Ionicons name="checkmark-done-circle" size={16} color={COLORS.success} />
               <Text style={styles.deliveredAtText}>
-                Entregado con éxito el {formatDateTime(order.deliveredAt)}
+                Entregado el {formatDateTime(order.deliveredAt)}
               </Text>
             </View>
           )}
 
-          {/* Botón Destacado de Edición (Solo Administrador) */}
+          {/* Botón de Edición (Admin) */}
           {isAdmin && (
             <TouchableOpacity
               style={styles.editOrderBannerBtn}
               onPress={handleOpenEditModal}
               activeOpacity={0.8}
             >
-              <Ionicons name="create-outline" size={16} color={COLORS.primary} />
-              <Text style={styles.editOrderBannerText}>Editar Solicitud</Text>
+              <Ionicons name="create-outline" size={15} color={COLORS.primary} />
+              <Text style={styles.editOrderBannerText}>Editar Datos del Despacho</Text>
               <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
             </TouchableOpacity>
           )}
         </View>
 
-        {/* Customer Information Card */}
+        {/* TARJETA 2: MANIFIESTO DE CARGA, RETORNABLES Y COBRO */}
         <View style={styles.card}>
-          <Text style={styles.cardHeaderTitle}>Destinatario / Cliente</Text>
-
-          <View style={styles.customerInfoBlock}>
-            <View
-              style={[
-                styles.customerAvatarMini,
-                isB2BCustomer({ name: order.customerName })
-                  ? styles.customerAvatarB2B
-                  : styles.customerAvatarB2C,
-              ]}
-            >
-              <Ionicons
-                name={isB2BCustomer({ name: order.customerName }) ? 'storefront' : 'person'}
-                size={18}
-                color={isB2BCustomer({ name: order.customerName }) ? '#2563EB' : '#059669'}
-              />
+          <View style={styles.cardHeaderWithTotal}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="cube-outline" size={17} color={COLORS.secondary} />
+              <Text style={styles.cardHeaderTitle}>Carga y Cobro</Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.customerName}>{order.customerName}</Text>
-              <Text style={styles.customerSegmentSub}>
-                {isB2BCustomer({ name: order.customerName }) ? 'Negocio (B2B)' : 'Hogar / Persona (B2C)'}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.contactActionsRow}>
-            <TouchableOpacity
-              style={styles.contactBtn}
-              onPress={handleCallCustomer}
-              activeOpacity={0.75}
-            >
-              <Ionicons name="call" size={16} color={COLORS.primary} />
-              <Text style={styles.contactBtnText}>
-                {formatPhone(order.customerPhone)}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.contactBtn, styles.whatsappBtn]}
-              onPress={handleWhatsApp}
-              activeOpacity={0.75}
-            >
-              <Ionicons name="logo-whatsapp" size={16} color="#16A34A" />
-              <Text style={[styles.contactBtnText, { color: '#16A34A' }]}>
-                WhatsApp
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.infoDivider} />
-
-          <View style={styles.infoRow}>
-            <Ionicons name="location-outline" size={18} color={COLORS.primary} />
-            <View style={styles.infoTextCol}>
-              <Text style={styles.infoLabel}>Dirección de Despacho</Text>
-              <Text style={styles.infoValue}>{order.deliveryAddress}</Text>
-              <Text style={styles.districtBadge}>{order.district}</Text>
-            </View>
-          </View>
-
-          {order.addressReference && (
-            <View style={[styles.infoRow, { marginTop: 10 }]}>
-              <Ionicons name="compass-outline" size={18} color={COLORS.textSecondary} />
-              <View style={styles.infoTextCol}>
-                <Text style={styles.infoLabel}>Referencia de Llegada</Text>
-                <Text style={styles.infoValueMuted}>
-                  {order.addressReference}
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {/* Direct Google Maps Navigation Button */}
-          <TouchableOpacity
-            style={styles.gpsNavigationButton}
-            onPress={handleOpenGoogleMaps}
-            activeOpacity={0.85}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={styles.gpsIconCircle}>
-                <Ionicons name="navigate" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.gpsButtonTitle}>Abrir en Google Maps</Text>
-            </View>
-            <Ionicons name="open-outline" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Product Items & Billing Breakdown */}
-        <View style={styles.card}>
-          <Text style={styles.cardHeaderTitle}>Detalle de Carga y Facturación</Text>
-
-          {order.items.map((item, index) => (
-            <View key={item.id || index} style={styles.itemRow}>
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemName}>{item.name}</Text>
-                <Text style={styles.itemQuantity}>
-                  {item.quantity} {item.unit} x {formatCurrency(item.unitPrice)}
-                </Text>
-              </View>
-              <Text style={styles.itemTotal}>
-                {formatCurrency(item.quantity * item.unitPrice)}
-              </Text>
-            </View>
-          ))}
-
-          <View style={styles.infoDivider} />
-
-          <View style={styles.totalRow}>
-            <View>
-              <Text style={styles.totalRowLabel}>Monto Total Liquidado</Text>
-              <View style={styles.paymentMethodRow}>
-                <Ionicons
-                  name={paymentConfig.icon as any}
-                  size={14}
-                  color={COLORS.textSecondary}
-                />
-                <Text style={styles.paymentMethodLabel}>
-                  {paymentConfig.label}
-                </Text>
-                <View
-                  style={[
-                    styles.paymentStatusPill,
-                    order.paymentStatus === 'PAID'
-                      ? styles.paymentPaid
-                      : styles.paymentPending,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.paymentStatusText,
-                      order.paymentStatus === 'PAID'
-                        ? { color: COLORS.success }
-                        : { color: COLORS.warning },
-                    ]}
-                  >
-                    {order.paymentStatus === 'PAID' ? 'PAGADO' : 'POR COBRAR'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
             <Text style={styles.grandTotalText}>
               {formatCurrency(order.totalAmount)}
             </Text>
           </View>
 
-          {/* Arqueo de vuelto para pagos en efectivo */}
-          {order.paymentMethod === 'CASH' && (
-            <View style={styles.cashDetailBox}>
-              <View style={styles.cashDetailHeader}>
-                <Ionicons name="cash-outline" size={16} color="#92400E" />
-                <Text style={styles.cashDetailTitle}>Arqueo de Pago en Efectivo</Text>
-              </View>
-              <View style={styles.cashInputRow}>
-                <Text style={styles.cashInputLabel}>Cliente paga con:</Text>
-                <TextInput
-                  style={styles.cashInputSmall}
-                  placeholder="Ej. 100"
-                  defaultValue={order.amountPaid ? String(order.amountPaid) : ''}
-                  onChangeText={handleUpdateCashPaid}
-                  keyboardType="decimal-pad"
-                />
-              </View>
-              {order.changeDue !== undefined && order.changeDue > 0 ? (
-                <View style={styles.changeRow}>
-                  <Text style={styles.changeLabel}>Vuelto a Devolver:</Text>
-                  <Text style={styles.changeValue}>{formatCurrency(order.changeDue)}</Text>
+          {/* Lista de Productos */}
+          <View style={styles.itemsListContainer}>
+            {order.items.map((item, index) => (
+              <View key={item.id || index} style={styles.itemRowCompact}>
+                <View style={styles.itemQtyBadge}>
+                  <Text style={styles.itemQtyText}>{item.quantity}x</Text>
                 </View>
-              ) : null}
-            </View>
-          )}
-        </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.itemNameCompact}>{item.name}</Text>
+                  <Text style={styles.itemUnitCompact}>
+                    {item.unit ? `${item.unit} • ` : ''}{formatCurrency(item.unitPrice)} c/u
+                  </Text>
+                </View>
+                <Text style={styles.itemTotalCompact}>
+                  {formatCurrency(item.quantity * item.unitPrice)}
+                </Text>
+              </View>
+            ))}
+          </View>
 
-        {/* Control de Envases Retornables (Bidones / Balones) */}
-        <View style={styles.card}>
-          <Text style={styles.cardHeaderTitle}>Control de Envases Retornables</Text>
-          <Text style={styles.containerDesc}>
-            Control de envases vacíos recuperados del cliente (garantías y préstamos):
-          </Text>
-          <View style={styles.containerCounterRow}>
+          <View style={styles.infoDivider} />
+
+          {/* Envases Retornables a Recuperar */}
+          <View style={styles.returnContainersCompactRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.containerLabel}>Envases Recuperados:</Text>
-              <Text style={styles.containerSub}>Balones o bidones vacíos que suben al vehículo</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <Ionicons name="repeat" size={15} color="#D97706" />
+                <Text style={styles.returnContainersTitle}>Envases Retornables</Text>
+              </View>
+              <Text style={styles.returnContainersSub}>
+                Vacíos a recuperar del cliente
+              </Text>
             </View>
+
             <View style={styles.counterControlGroup}>
               <TouchableOpacity
                 style={styles.counterBtnSmall}
@@ -539,126 +451,203 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </TouchableOpacity>
             </View>
           </View>
+
+          <View style={styles.infoDivider} />
+
+          {/* Método de Pago y Arqueo Rápido de Efectivo */}
+          <View style={styles.paymentMethodRowCompact}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons
+                name={paymentConfig.icon as any}
+                size={16}
+                color={COLORS.textSecondary}
+              />
+              <Text style={styles.paymentMethodLabel}>
+                {paymentConfig.label}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.paymentStatusPill,
+                order.paymentStatus === 'PAID'
+                  ? styles.paymentPaid
+                  : styles.paymentPending,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.paymentStatusText,
+                  order.paymentStatus === 'PAID'
+                    ? { color: COLORS.success }
+                    : { color: COLORS.warning },
+                ]}
+              >
+                {order.paymentStatus === 'PAID' ? 'PAGADO' : 'POR COBRAR'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Instrucciones de Cobro y Vuelto si es Efectivo (Solo Lectura Instructivo para Repartidor) */}
+          {order.paymentMethod === 'CASH' && (
+            <View style={styles.cashDetailBoxCompact}>
+              {order.amountPaid && order.amountPaid > order.totalAmount ? (
+                <>
+                  <View style={styles.cashInstructionRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="cash-outline" size={16} color="#059669" />
+                      <Text style={styles.cashInstructionLabel}>Cliente paga con billete:</Text>
+                    </View>
+                    <Text style={styles.cashInstructionAmount}>{formatCurrency(order.amountPaid)}</Text>
+                  </View>
+                  <View style={styles.changeInstructionRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="swap-horizontal-outline" size={16} color="#2563EB" />
+                      <Text style={styles.changeInstructionLabel}>Entregar vuelto:</Text>
+                    </View>
+                    <Text style={styles.changeInstructionAmount}>
+                      {formatCurrency(order.changeDue || (order.amountPaid - order.totalAmount))}
+                    </Text>
+                  </View>
+                </>
+              ) : order.amountPaid && order.amountPaid === order.totalAmount ? (
+                <View style={styles.cashInstructionRow}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="checkmark-done-circle-outline" size={16} color="#059669" />
+                    <Text style={styles.cashInstructionLabel}>Pago en efectivo:</Text>
+                  </View>
+                  <Text style={styles.cashExactPill}>Importe exacto ({formatCurrency(order.totalAmount)})</Text>
+                </View>
+              ) : (
+                <View style={styles.cashInstructionRow}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="cash-outline" size={16} color="#D97706" />
+                    <Text style={styles.cashInstructionLabel}>Cobro al entregar:</Text>
+                  </View>
+                  <Text style={styles.cashInstructionAmount}>{formatCurrency(order.totalAmount)}</Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
-        {/* Driver & Delivery Notes */}
-        <View style={styles.card}>
-          <Text style={styles.cardHeaderTitle}>Operaciones y Transporte</Text>
-
-          {order.driverAssigned && (
-            <View style={styles.infoRow}>
-              <Ionicons name="car-outline" size={18} color={COLORS.primary} />
-              <View style={styles.infoTextCol}>
-                <Text style={styles.infoLabel}>Unidad / Conductor Asignado</Text>
-                <Text style={styles.infoValue}>{order.driverAssigned}</Text>
-              </View>
-            </View>
-          )}
-
-          {order.scheduledTime && (
-            <View style={[styles.infoRow, { marginTop: 10 }]}>
-              <Ionicons name="time-outline" size={18} color={COLORS.textSecondary} />
-              <View style={styles.infoTextCol}>
-                <Text style={styles.infoLabel}>Ventana de Entrega</Text>
-                <Text style={styles.infoValue}>{order.scheduledTime}</Text>
-              </View>
-            </View>
-          )}
-
-          {order.notes && (
-            <View style={[styles.infoRow, { marginTop: 10 }]}>
-              <Ionicons name="document-text-outline" size={18} color={COLORS.textSecondary} />
-              <View style={styles.infoTextCol}>
-                <Text style={styles.infoLabel}>Instrucciones Especiales</Text>
-                <Text style={styles.infoValueMuted}>{order.notes}</Text>
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* State Transition Action Buttons */}
-        <View style={styles.actionsBlock}>
-          {order.status === 'PENDING' && (
-            <>
-              <CustomButton
-                title="Despachar a Ruta"
-                icon="bicycle-outline"
-                size="lg"
-                variant="primary"
-                onPress={() => handleSetStatus('IN_TRANSIT')}
-                fullWidth
-              />
-              <CustomButton
-                title="Cancelar Pedido"
-                icon="close-circle-outline"
-                size="md"
-                variant="outline"
-                onPress={() => handleSetStatus('CANCELLED')}
-                textStyle={{ color: COLORS.danger }}
-                style={{ borderColor: COLORS.danger, marginTop: 10 }}
-                fullWidth
-              />
-            </>
-          )}
-
-          {order.status === 'IN_TRANSIT' && (
-            <>
-              <CustomButton
-                title="Abrir en Google Maps"
-                icon="navigate-circle-outline"
-                size="lg"
-                variant="primary"
-                onPress={handleOpenNavigationModal}
-                style={{ marginBottom: 10 }}
-                fullWidth
-              />
-              <CustomButton
-                title="Confirmar Entrega"
-                icon="checkmark-done-outline"
-                size="lg"
-                variant="success"
-                onPress={() => handleSetStatus('DELIVERED')}
-                fullWidth
-              />
-              <CustomButton
-                title="Volver a Pendiente"
-                icon="arrow-undo-outline"
-                size="md"
-                variant="outline"
-                onPress={() => handleSetStatus('PENDING')}
-                style={{ marginTop: 10 }}
-                fullWidth
-              />
-            </>
-          )}
-
-          {order.status === 'DELIVERED' && (
-            <View style={styles.completedBanner}>
-              <Ionicons name="checkmark-circle" size={28} color={COLORS.success} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.completedTitle}>¡Entrega Concluida!</Text>
-                <Text style={styles.completedSubtitle}>
-                  El cliente recibió conforme los productos y la liquidación está asentada.
+        {/* TARJETA 3: INSTRUCCIONES ESPECIALES Y VENTANA (SI EXISTEN) */}
+        {(order.scheduledTime || order.notes) && (
+          <View style={styles.notesCardCompact}>
+            {order.scheduledTime ? (
+              <View style={styles.noteItemRow}>
+                <Ionicons name="time-outline" size={15} color="#475569" />
+                <Text style={styles.noteItemText}>
+                  Ventana de entrega: <Text style={{ fontWeight: '700' }}>{order.scheduledTime}</Text>
                 </Text>
               </View>
-            </View>
-          )}
+            ) : null}
 
-          {order.status === 'CANCELLED' && (
-            <View style={styles.cancelledBanner}>
-              <Ionicons name="alert-circle" size={28} color={COLORS.danger} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cancelledTitle}>Pedido Anulado</Text>
-                <Text style={styles.cancelledSubtitle}>
-                  Este despacho no será computado en el balance activo de ruta.
+            {order.notes ? (
+              <View style={[styles.noteItemRow, order.scheduledTime ? { marginTop: 4 } : undefined]}>
+                <Ionicons name="document-text-outline" size={15} color="#475569" />
+                <Text style={styles.noteItemText}>
+                  Nota: <Text style={{ fontStyle: 'italic' }}>{order.notes}</Text>
                 </Text>
               </View>
-            </View>
-          )}
-        </View>
+            ) : null}
+          </View>
+        )}
       </ScrollView>
 
-      {/* Modal de Edición de Solicitud (Rúbrica: Detalle / Editar Solicitud) */}
+      {/* BARRA DE ACCIÓN FIJA INFERIOR (STICKY FOOTER - CERO SCROLL) */}
+      <View style={styles.stickyFooter}>
+        {order.status === 'PENDING' && (
+          <View style={styles.footerRowTwoBtns}>
+            <TouchableOpacity
+              style={styles.footerOutlineBtn}
+              onPress={() => handleSetStatus('CANCELLED')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="close-circle-outline" size={16} color={COLORS.danger} />
+              <Text style={styles.footerOutlineBtnText}>Anular</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.footerPrimaryBtn}
+              onPress={() => handleSetStatus('IN_TRANSIT')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="bicycle" size={18} color="#FFFFFF" />
+              <Text style={styles.footerPrimaryBtnText}>Despachar a Ruta</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {order.status === 'IN_TRANSIT' && (
+          <View style={styles.footerRowTwoBtns}>
+            <TouchableOpacity
+              style={styles.footerOutlineBtn}
+              onPress={() => handleSetStatus('PENDING')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="arrow-undo-outline" size={16} color={COLORS.textSecondary} />
+              <Text style={[styles.footerOutlineBtnText, { color: COLORS.textSecondary }]}>
+                Atrás
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.footerSuccessBtn}
+              onPress={() => handleSetStatus('DELIVERED')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="checkmark-done" size={20} color="#FFFFFF" />
+              <Text style={styles.footerSuccessBtnText}>
+                Confirmar Entrega ({formatCurrency(order.totalAmount)})
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {order.status === 'DELIVERED' && (
+          <View style={styles.completedBannerCompact}>
+            <Ionicons name="checkmark-circle" size={24} color={COLORS.success} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.completedTitleCompact}>¡Entrega Concluida y Cobrada!</Text>
+              <Text style={styles.completedSubtitleCompact}>
+                Liquidación conforme de {formatCurrency(order.totalAmount)}.
+              </Text>
+            </View>
+            {isAdmin && (
+              <TouchableOpacity
+                onPress={() => handleSetStatus('IN_TRANSIT')}
+                style={styles.reopenSmallBtn}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.reopenSmallBtnText}>Reabrir</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {order.status === 'CANCELLED' && (
+          <View style={styles.cancelledBannerCompact}>
+            <Ionicons name="alert-circle" size={24} color={COLORS.danger} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cancelledTitleCompact}>Pedido Anulado</Text>
+              <Text style={styles.cancelledSubtitleCompact}>
+                Despacho fuera del balance activo.
+              </Text>
+            </View>
+            {isAdmin && (
+              <TouchableOpacity
+                onPress={() => handleSetStatus('PENDING')}
+                style={styles.reopenSmallBtn}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.reopenSmallBtnText}>Reactivar</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </View>
+
+      {/* Modal de edición de pedido */}
       <Modal
         visible={isEditModalVisible}
         animationType="slide"
@@ -754,11 +743,23 @@ export const OrderDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 label="Instrucciones / Descripción Especial"
                 value={editNotes}
                 onChangeText={setEditNotes}
-                placeholder="Indicaciones para el repartidor..."
+                placeholder="Indicaciones para el distribuidor..."
                 icon="document-text-outline"
                 multiline
                 numberOfLines={3}
               />
+
+              {/* Billete en Efectivo (Configurable solo por Admin) */}
+              {order.paymentMethod === 'CASH' && (
+                <CustomInput
+                  label="Billete con el que paga el cliente (Para cálculo de vuelto)"
+                  value={editAmountPaid}
+                  onChangeText={setEditAmountPaid}
+                  placeholder={`Ej. 50 o 100 (Total a cobrar: ${formatCurrency(order.totalAmount)})`}
+                  icon="cash-outline"
+                  keyboardType="decimal-pad"
+                />
+              )}
 
               {/* Botones de Acción */}
               <View style={styles.modalButtonsRow}>
@@ -791,8 +792,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
+    padding: 14,
+    paddingBottom: 24,
   },
   notFoundContainer: {
     flex: 1,
@@ -812,57 +813,112 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 6,
   },
-  statusBannerCard: {
+  card: {
     backgroundColor: COLORS.surface,
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
-    marginBottom: 16,
+    marginBottom: 12,
     elevation: 2,
     shadowColor: COLORS.cardShadow,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
   },
-  statusRow: {
+  clientHeaderRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  statusBannerCaption: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    marginBottom: 6,
-  },
-  badgesWrapper: {
+  clientNameAndType: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  categoryBadgeRight: {
-    alignItems: 'center',
-  },
-  categoryCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
     marginBottom: 4,
   },
-  categoryLabelText: {
-    fontSize: 11,
-    fontWeight: '700',
+  customerName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  customerTypeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  customerTypeB2B: {
+    backgroundColor: '#EFF6FF',
+  },
+  customerTypeB2C: {
+    backgroundColor: '#ECFDF5',
+  },
+  customerTypeBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  customerAddress: {
+    fontSize: 13,
     color: COLORS.textSecondary,
+    lineHeight: 18,
+  },
+  customerRef: {
+    fontSize: 11.5,
+    color: COLORS.textMuted,
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  statusBadgesCol: {
+    alignItems: 'flex-end',
+    gap: 5,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  quickGpsBtn: {
+    flex: 1.1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 10,
+    borderRadius: 12,
+    elevation: 2,
+  },
+  quickGpsBtnText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  quickContactBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  quickContactBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  quickWhatsappBtn: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
   },
   deliveredAtRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 10,
+    marginTop: 10,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
     gap: 6,
@@ -872,373 +928,81 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.success,
   },
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: COLORS.cardShadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 5,
+  cardHeaderWithTotal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
   cardHeaderTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13.5,
+    fontWeight: '800',
     color: COLORS.secondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 12,
   },
-  customerInfoBlock: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
+  grandTotalText: {
+    fontSize: 19,
+    fontWeight: '900',
+    color: COLORS.primary,
   },
-  customerAvatarMini: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-  },
-  customerAvatarB2B: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#BFDBFE',
-  },
-  customerAvatarB2C: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
-  },
-  customerName: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  customerSegmentSub: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginTop: 1,
-  },
-  contactActionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
-  },
-  contactBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    borderRadius: 10,
-    paddingVertical: 9,
+  itemsListContainer: {
     gap: 6,
   },
-  whatsappBtn: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
+  itemRowCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
   },
-  contactBtnText: {
+  itemQtyBadge: {
+    backgroundColor: '#EFF6FF',
+    minWidth: 28,
+    height: 24,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  itemQtyText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#0284C7',
+  },
+  itemNameCompact: {
     fontSize: 13,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: COLORS.textPrimary,
+  },
+  itemUnitCompact: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+  },
+  itemTotalCompact: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
   },
   infoDivider: {
     height: 1,
     backgroundColor: '#F1F5F9',
-    marginVertical: 12,
+    marginVertical: 10,
   },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  infoTextCol: {
-    flex: 1,
-  },
-  infoLabel: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    fontWeight: '600',
-  },
-  infoValue: {
-    fontSize: 14,
-    color: COLORS.textPrimary,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  infoValueMuted: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-    lineHeight: 18,
-  },
-  districtBadge: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.primary,
-    marginTop: 2,
-  },
-  itemRow: {
+  returnContainersCompactRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 6,
-  },
-  itemInfo: {
-    flex: 1,
-  },
-  itemName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  itemQuantity: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  itemTotal: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginLeft: 12,
-  },
-  totalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  totalRowLabel: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    fontWeight: '600',
-  },
-  paymentMethodRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  paymentMethodLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-  },
-  paymentStatusPill: {
-    paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 6,
   },
-  paymentPaid: {
-    backgroundColor: '#ECFDF5',
-  },
-  paymentPending: {
-    backgroundColor: '#FEF3C7',
-  },
-  paymentStatusText: {
-    fontSize: 9,
+  returnContainersTitle: {
+    fontSize: 12.5,
     fontWeight: '800',
+    color: '#B45309',
   },
-  grandTotalText: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  actionsBlock: {
-    marginTop: 8,
-  },
-  completedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-    borderRadius: 14,
-    padding: 16,
-    gap: 12,
-  },
-  completedTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#065F46',
-  },
-  completedSubtitle: {
-    fontSize: 12,
-    color: '#047857',
-    marginTop: 2,
-  },
-  cancelledBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: 14,
-    padding: 16,
-    gap: 12,
-  },
-  cancelledTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#991B1B',
-  },
-  cancelledSubtitle: {
-    fontSize: 12,
-    color: '#B91C1C',
-    marginTop: 2,
-  },
-  gpsNavigationButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#0284C7',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginTop: 16,
-    elevation: 3,
-    shadowColor: '#0284C7',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
-  },
-  gpsButtonLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-  },
-  gpsIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gpsButtonTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  gpsButtonSubtitle: {
+  returnContainersSub: {
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: '#92400E',
     marginTop: 1,
-  },
-  gpsButtonBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 8,
-    gap: 2,
-  },
-  gpsButtonBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  cashDetailBox: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 14,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-  },
-  cashDetailHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
-  },
-  cashDetailTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#92400E',
-    textTransform: 'uppercase',
-  },
-  cashInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  cashInputLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#92400E',
-  },
-  cashInputSmall: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#FCD34D',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#78350F',
-    width: 100,
-    textAlign: 'center',
-  },
-  changeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#FDE68A',
-  },
-  changeLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#92400E',
-  },
-  changeValue: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: COLORS.success,
-  },
-  containerDesc: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginBottom: 12,
-    lineHeight: 16,
-  },
-  containerCounterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F8FAFC',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  containerLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  containerSub: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    marginTop: 2,
   },
   counterControlGroup: {
     flexDirection: 'row',
@@ -1249,16 +1013,226 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   counterBtnSmall: {
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
   counterQtyTextLarge: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     color: COLORS.textPrimary,
+  },
+  paymentMethodRowCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+  },
+  paymentMethodLabel: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
+  paymentStatusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  paymentPaid: {
+    backgroundColor: '#ECFDF5',
+  },
+  paymentPending: {
+    backgroundColor: '#FEF3C7',
+  },
+  paymentStatusText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  cashDetailBoxCompact: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    gap: 6,
+  },
+  cashInstructionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cashInstructionLabel: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  cashInstructionAmount: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#78350F',
+  },
+  cashExactPill: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#065F46',
+  },
+  changeInstructionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#FDE68A',
+  },
+  changeInstructionLabel: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#1E40AF',
+  },
+  changeInstructionAmount: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#1D4ED8',
+  },
+  notesCardCompact: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 12,
+  },
+  noteItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  noteItemText: {
+    fontSize: 12,
+    color: '#475569',
+    flex: 1,
+  },
+  stickyFooter: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 16 : 10,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+  },
+  footerRowTwoBtns: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  footerOutlineBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+  },
+  footerOutlineBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.danger,
+  },
+  footerPrimaryBtn: {
+    flex: 2.2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    elevation: 2,
+  },
+  footerPrimaryBtnText: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  footerSuccessBtn: {
+    flex: 2.4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: COLORS.success,
+    elevation: 3,
+  },
+  footerSuccessBtnText: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  completedBannerCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 12,
+    padding: 10,
+    gap: 10,
+  },
+  completedTitleCompact: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#065F46',
+  },
+  completedSubtitleCompact: {
+    fontSize: 11,
+    color: '#047857',
+  },
+  cancelledBannerCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 12,
+    padding: 10,
+    gap: 10,
+  },
+  cancelledTitleCompact: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#991B1B',
+  },
+  cancelledSubtitleCompact: {
+    fontSize: 11,
+    color: '#B91C1C',
+  },
+  reopenSmallBtn: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  reopenSmallBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
   },
   /* Edit Button & Modal */
   editOrderBannerBtn: {

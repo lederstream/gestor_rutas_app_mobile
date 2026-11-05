@@ -1,12 +1,4 @@
-/**
- * ============================================================================
- * SCREEN: WelcomeScreen.tsx
- * Tablero Principal Ejecutivo y Operativo (RBAC: Admin vs Distribuidor)
- * UX Móvil Limpia según Estándares de la Industria (Sin redundancias)
- * ============================================================================
- */
-
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,6 +7,10 @@ import {
   TouchableOpacity,
   StatusBar,
   Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -26,21 +22,138 @@ import { useCustomers } from '../context/CustomerContext';
 import { useProducts } from '../context/ProductContext';
 import { COLORS, SPACING, RADIUS, TOUCH_TARGET } from '../utils/constants';
 import { formatCurrency } from '../utils/formatters';
-import { hapticImpact, hapticSelection } from '../utils/haptics';
+import { hapticImpact, hapticSelection, hapticNotification } from '../utils/haptics';
 import { FloatingBottomDock } from '../components/common/FloatingBottomDock';
+import {
+  getSavedDistricts,
+  addDistrict,
+  updateDistrict,
+  deleteDistrict,
+  resetDefaultDistricts,
+} from '../services/districtService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WelcomeScreen'>;
 
 export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
-  const { user } = useAuth();
-  const { orders, statistics, clearAllOrders } = useOrders();
+  const { user, accounts } = useAuth();
+  const { orders, statistics, clearAllOrders, getOrdersForUser, getStatisticsForUser } = useOrders();
   const { customers } = useCustomers();
   const { products } = useProducts();
 
   const isAdmin = user?.role === 'ADMIN';
   const isDistributor = user?.role === 'DISTRIBUTOR';
 
-  const activeDeliveriesCount = statistics.pendingOrders + statistics.inTransitOrders;
+  // Cantidad de choferes en flota (garantizado dinámico)
+  const distributorsCount = useMemo(() => {
+    return accounts.filter((a) => a.role === 'DISTRIBUTOR').length;
+  }, [accounts]);
+
+  // Gestión de Distritos de Tacna (CRUD Completo)
+  const [isDistrictsModalVisible, setIsDistrictsModalVisible] = useState(false);
+  const [managedDistricts, setManagedDistricts] = useState<string[]>([]);
+  const [newDistrictInput, setNewDistrictInput] = useState('');
+  const [editingDistrictOldName, setEditingDistrictOldName] = useState<string | null>(null);
+  const [editingDistrictNewInput, setEditingDistrictNewInput] = useState('');
+
+  useEffect(() => {
+    if (isAdmin) {
+      getSavedDistricts().then(setManagedDistricts);
+    }
+  }, [isAdmin]);
+
+  const handleOpenDistrictsModal = async () => {
+    hapticImpact('light');
+    const list = await getSavedDistricts();
+    setManagedDistricts(list);
+    setNewDistrictInput('');
+    setEditingDistrictOldName(null);
+    setIsDistrictsModalVisible(true);
+  };
+
+  const handleAddDistrictAction = async () => {
+    const res = await addDistrict(newDistrictInput);
+    if (!res.success) {
+      Alert.alert('Aviso', res.error || 'No se pudo agregar el distrito.');
+      return;
+    }
+    setManagedDistricts(res.districts);
+    setNewDistrictInput('');
+    hapticImpact('medium');
+  };
+
+  const handleStartEditDistrict = (distName: string) => {
+    hapticImpact('light');
+    setEditingDistrictOldName(distName);
+    setEditingDistrictNewInput(distName);
+  };
+
+  const handleSaveEditDistrict = async () => {
+    if (!editingDistrictOldName) return;
+    const res = await updateDistrict(editingDistrictOldName, editingDistrictNewInput);
+    if (!res.success) {
+      Alert.alert('Aviso', res.error || 'No se pudo actualizar el distrito.');
+      return;
+    }
+    setManagedDistricts(res.districts);
+    setEditingDistrictOldName(null);
+    setEditingDistrictNewInput('');
+    hapticImpact('medium');
+  };
+
+  const handleDeleteDistrictAction = async (distName: string) => {
+    Alert.alert(
+      'Eliminar Zona de Cobertura',
+      `¿Deseas retirar a "${distName}" de las zonas de reparto de Tacna?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sí, Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            const res = await deleteDistrict(distName);
+            if (!res.success) {
+              Alert.alert('Operación Bloqueada', res.error || 'No se puede eliminar el distrito.');
+              return;
+            }
+            setManagedDistricts(res.districts);
+            hapticImpact('light');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleResetDistrictsAction = () => {
+    Alert.alert(
+      'Restablecer Zonas',
+      '¿Deseas restablecer los distritos oficiales de Tacna a sus valores predeterminados?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sí, Restablecer',
+          onPress: async () => {
+            const list = await resetDefaultDistricts();
+            setManagedDistricts(list);
+            hapticNotification('success');
+          },
+        },
+      ]
+    );
+  };
+
+  // Métricas del usuario actual
+  const userOrders = useMemo(() => {
+    return getOrdersForUser(user);
+  }, [getOrdersForUser, user, orders]);
+
+  const userStats = useMemo(() => {
+    return getStatisticsForUser(user);
+  }, [getStatisticsForUser, user, orders]);
+
+  const activeDeliveriesCount = userStats.pendingOrders + userStats.inTransitOrders;
+  const deliveredCount = userStats.deliveredOrders;
+  const totalCount = userStats.totalOrders;
+  const pendingCollection = userStats.pendingCollection;
 
   const handleClearAll = () => {
     Alert.alert(
@@ -68,9 +181,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* =================================================================== */}
         {/* CABECERA PRINCIPAL: IDENTIDAD Y ACCESO A MI PERFIL */}
-        {/* =================================================================== */}
         <View style={styles.topHeader}>
           <View style={styles.brandRow}>
             <View style={styles.logoBadge}>
@@ -99,7 +210,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.appSubtitle} numberOfLines={1}>
                 {isAdmin
                   ? `👑 ${user?.name || 'Administrador'} • Tacna Central`
-                  : `👨‍✈️ ${user?.name || 'Distribuidor'} • ${user?.vehicleInfo || 'Unidad Asignada'}`}
+                  : `👨‍✈️ ${user?.name || 'Distribuidor'} • ${user?.specialtyLabel || user?.vehicleInfo || 'Unidad Asignada'}`}
               </Text>
             </View>
 
@@ -127,9 +238,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
 
-        {/* =================================================================== */}
         {/* BANNER PRINCIPAL DE ACCIÓN: CONDUCTOR / OPERACIÓN EN RUTA */}
-        {/* =================================================================== */}
         {activeDeliveriesCount > 0 ? (
           <View style={styles.activeRouteHeroCard}>
             <View style={styles.activeHeroTop}>
@@ -140,7 +249,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
                 </Text>
               </View>
               <Text style={styles.activeHeroProgress}>
-                {statistics.deliveredOrders} de {statistics.totalOrders} entregados ({statistics.completedDeliveriesRate}%)
+                {deliveredCount} de {totalCount} entregados
               </Text>
             </View>
 
@@ -148,7 +257,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
               {activeDeliveriesCount} {activeDeliveriesCount === 1 ? 'parada pendiente' : 'paradas pendientes'} por entregar
             </Text>
             <Text style={styles.activeHeroDesc}>
-              Cobranza en ruta estimada: {formatCurrency(statistics.pendingCollection)}
+              Cobranza en ruta estimada: {formatCurrency(pendingCollection)}
             </Text>
 
             <View style={styles.activeHeroButtonsRow}>
@@ -197,9 +306,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         )}
 
-        {/* =================================================================== */}
-        {/* BOTÓN RÁPIDO PARA CREAR PEDIDO (SOLO VISIBLE PARA ADMINISTRADOR) */}
-        {/* =================================================================== */}
+        {/* Acceso para crear nuevo pedido */}
         {isAdmin && (
           <TouchableOpacity
             style={styles.newOrderActionCard}
@@ -222,9 +329,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         )}
 
-        {/* =================================================================== */}
         {/* TABLERO RESUMEN DE HOY (MÉTRICAS OPERATIVAS) */}
-        {/* =================================================================== */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeaderTitle}>
             {isAdmin ? 'Operación General de Hoy' : 'Tu Desempeño de Hoy'}
@@ -239,27 +344,27 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.kpiGrid}>
           <View style={styles.kpiCard}>
-            <Text style={styles.kpiNumber}>{statistics.totalOrders}</Text>
+            <Text style={styles.kpiNumber}>{userStats.totalOrders}</Text>
             <Text style={styles.kpiLabel}>Total</Text>
           </View>
 
           <View style={styles.kpiCard}>
             <Text style={[styles.kpiNumber, { color: COLORS.statusInTransit }]}>
-              {statistics.inTransitOrders}
+              {userStats.inTransitOrders}
             </Text>
             <Text style={styles.kpiLabel}>En Ruta</Text>
           </View>
 
           <View style={styles.kpiCard}>
             <Text style={[styles.kpiNumber, { color: COLORS.statusDelivered }]}>
-              {statistics.deliveredOrders}
+              {userStats.deliveredOrders}
             </Text>
             <Text style={styles.kpiLabel}>Entregados</Text>
           </View>
 
           <View style={styles.kpiCard}>
             <Text style={[styles.kpiNumber, { color: COLORS.primary }]}>
-              {formatCurrency(isAdmin ? statistics.totalRevenue : statistics.pendingCollection)}
+              {formatCurrency(isAdmin ? userStats.totalRevenue : userStats.pendingCollection)}
             </Text>
             <Text style={styles.kpiLabel}>
               {isAdmin ? 'Recaudado' : 'Por Cobrar'}
@@ -267,31 +372,194 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
 
-        {/* =================================================================== */}
-        {/* ACCIÓN RÁPIDA DE CARGA / MANIFIESTO */}
-        {/* =================================================================== */}
-        <TouchableOpacity
-          style={styles.manifestCard}
-          onPress={() => {
-            hapticSelection();
-            navigation.navigate('RouteSummaryModalOrScreen');
-          }}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.manifestIconBox, { backgroundColor: '#F3E8FF' }]}>
-            <Ionicons name="clipboard" size={22} color="#7C3AED" />
+        {/* PANEL DE ADMINISTRACIÓN OPERATIVA Y FLOTA (SOLO ADMINISTRADOR) */}
+        {isAdmin && (
+          <View style={styles.adminModulesSection}>
+            <Text style={styles.sectionHeaderTitle}>Administración Operativa</Text>
+
+            <View style={styles.adminCardsRow}>
+              {/* Tarjeta 1: Flota y Distribuidores (Navega a pantalla completa DriverListScreen) */}
+              <TouchableOpacity
+                style={styles.adminModuleCard}
+                onPress={() => {
+                  hapticImpact('light');
+                  navigation.navigate('DriverListScreen');
+                }}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.adminModuleIconBox, { backgroundColor: '#EFF6FF' }]}>
+                  <Ionicons name="people" size={24} color={COLORS.primary} />
+                </View>
+                <Text style={styles.adminModuleTitle}>Flota y Choferes</Text>
+                <Text style={styles.adminModuleSubtitle}>
+                  {distributorsCount} conductores activos
+                </Text>
+                <View style={styles.adminModuleActionPill}>
+                  <Text style={styles.adminModuleActionPillText}>Gestionar Flota →</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Tarjeta 2: Zonas y Distritos de Reparto (Abre CRUD Modal) */}
+              <TouchableOpacity
+                style={styles.adminModuleCard}
+                onPress={handleOpenDistrictsModal}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.adminModuleIconBox, { backgroundColor: '#F0FDF4' }]}>
+                  <Ionicons name="map" size={24} color={COLORS.success} />
+                </View>
+                <Text style={styles.adminModuleTitle}>Zonas y Distritos</Text>
+                <Text style={styles.adminModuleSubtitle}>
+                  {managedDistricts.length} zonas en Tacna
+                </Text>
+                <View style={[styles.adminModuleActionPill, { backgroundColor: '#ECFDF5' }]}>
+                  <Text style={[styles.adminModuleActionPillText, { color: '#059669' }]}>
+                    Configurar Zonas →
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.manifestTitle}>Manifiesto y Carga en Camión</Text>
-            <Text style={styles.manifestSubtitle}>
-              {isDistributor
-                ? 'Control de balones, bidones y envases vacíos a bordo'
-                : 'Auditoría física de carga total y envases retornables'}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-        </TouchableOpacity>
+        )}
       </ScrollView>
+
+      {/* MODAL CRUD COMPLETO: ZONAS Y DISTRITOS DE TACNA */}
+      <Modal
+        visible={isDistrictsModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsDistrictsModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.districtsModalBackdrop}
+        >
+          <View style={styles.districtsModalCard}>
+            <View style={styles.districtsModalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="map" size={20} color={COLORS.success} />
+                <Text style={styles.districtsModalTitle}>
+                  Zonas y Distritos de Tacna ({managedDistricts.length})
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setIsDistrictsModalVisible(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={22} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.districtsModalSubtitle}>
+              Configura las zonas donde tus repartidores tienen cobertura oficial.
+            </Text>
+
+            {/* Input para Agregar Nuevo Distrito */}
+            <View style={styles.addDistrictRow}>
+              <TextInput
+                style={styles.addDistrictInput}
+                placeholder="Nuevo distrito (Ej. Calana, Pachía...)"
+                placeholderTextColor="#94A3B8"
+                value={newDistrictInput}
+                onChangeText={setNewDistrictInput}
+              />
+              <TouchableOpacity
+                style={styles.addDistrictBtn}
+                onPress={handleAddDistrictAction}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Lista con CRUD de Distritos */}
+            <ScrollView style={{ maxHeight: 290 }} showsVerticalScrollIndicator={false}>
+              {managedDistricts.map((dist, idx) => {
+                const isEditingThis = editingDistrictOldName === dist;
+                const ordersInDistrict = orders.filter((o) => o.district === dist).length;
+
+                return (
+                  <View key={dist + idx} style={styles.districtItemCard}>
+                    {isEditingThis ? (
+                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <TextInput
+                          style={styles.editDistrictInput}
+                          value={editingDistrictNewInput}
+                          onChangeText={setEditingDistrictNewInput}
+                          autoFocus={true}
+                        />
+                        <TouchableOpacity
+                          style={styles.saveEditDistrictBtn}
+                          onPress={handleSaveEditDistrict}
+                        >
+                          <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.cancelEditDistrictBtn}
+                          onPress={() => setEditingDistrictOldName(null)}
+                        >
+                          <Ionicons name="close" size={16} color="#64748B" />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <>
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Ionicons name="location" size={15} color={COLORS.primary} />
+                            <Text style={styles.districtItemText}>{dist}</Text>
+                          </View>
+                          <Text style={styles.districtOrdersCountText}>
+                            {ordersInDistrict} {ordersInDistrict === 1 ? 'pedido registrado' : 'pedidos registrados'}
+                          </Text>
+                        </View>
+
+                        {/* Botones de acción: Editar y Eliminar */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <TouchableOpacity
+                            style={styles.actionDistrictIconBtn}
+                            onPress={() => handleStartEditDistrict(dist)}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="pencil" size={14} color={COLORS.primary} />
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[styles.actionDistrictIconBtn, { backgroundColor: '#FEF2F2' }]}
+                            onPress={() => handleDeleteDistrictAction(dist)}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="trash-outline" size={14} color={COLORS.danger} />
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    )}
+                  </View>
+                );
+              })}
+            </ScrollView>
+
+            {/* Acciones Inferiores */}
+            <View style={styles.districtsModalBottomRow}>
+              <TouchableOpacity
+                style={styles.resetDistrictsBtn}
+                onPress={handleResetDistrictsAction}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="refresh-outline" size={14} color="#64748B" />
+                <Text style={styles.resetDistrictsBtnText}>Restablecer Base</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.closeDistrictsModalBtn}
+                onPress={() => setIsDistrictsModalVisible(false)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.closeDistrictsModalBtnText}>Listo, Guardar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Floating Dock - Burbujas Flotantes de Navegación */}
       <FloatingBottomDock activeTab="HOME" navigation={navigation} />
@@ -305,7 +573,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   scrollContent: {
-    paddingBottom: 95,
+    paddingBottom: 115,
   },
   topHeader: {
     backgroundColor: COLORS.surface,
@@ -635,5 +903,204 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: 2,
     lineHeight: 15,
+  },
+  /* Módulos Operativos y Flota para Administrador */
+  adminModulesSection: {
+    paddingHorizontal: SPACING.lg,
+    marginTop: SPACING.lg,
+  },
+  adminCardsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 10,
+  },
+  adminModuleCard: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+  },
+  adminModuleIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  adminModuleTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  adminModuleSubtitle: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+    marginBottom: 10,
+  },
+  adminModuleActionPill: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: RADIUS.sm,
+    alignSelf: 'flex-start',
+  },
+  adminModuleActionPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+  /* Modal de Distritos */
+  districtsModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    padding: SPACING.md,
+  },
+  districtsModalCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    maxHeight: '85%',
+  },
+  districtsModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  districtsModalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.secondary,
+  },
+  districtsModalSubtitle: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginVertical: 10,
+  },
+  addDistrictRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  addDistrictInput: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: COLORS.textPrimary,
+  },
+  addDistrictBtn: {
+    backgroundColor: COLORS.primary,
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  districtItemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: RADIUS.md,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  districtItemText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  districtOrdersCountText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginTop: 2,
+    marginLeft: 21,
+  },
+  actionDistrictIconBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 6,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editDistrictInput: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    fontSize: 13,
+    color: COLORS.textPrimary,
+  },
+  saveEditDistrictBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    backgroundColor: COLORS.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelEditDistrictBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    backgroundColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  districtsModalBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 14,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  resetDistrictsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  resetDistrictsBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  closeDistrictsModalBtn: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: RADIUS.md,
+  },
+  closeDistrictsModalBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
   },
 });

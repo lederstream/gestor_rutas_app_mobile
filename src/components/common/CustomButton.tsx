@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * COMMON COMPONENT: CustomButton.tsx
- * High-performance, tactile button with multi-variant visual design
- * ============================================================================
- */
-
 import React from 'react';
 import {
   TouchableOpacity,

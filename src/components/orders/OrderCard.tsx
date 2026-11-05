@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * ORDER COMPONENT: OrderCard.tsx
- * Tarjeta Ergonómica de Despacho con Alto Contraste y Acciones Rápidas de 48dp+
- * ============================================================================
- */
-
 import React from 'react';
 import {
   View,

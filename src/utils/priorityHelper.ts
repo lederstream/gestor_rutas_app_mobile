@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * UTILITY: priorityHelper.ts
- * Cálculo inteligente y automático de prioridad y urgencia basado en tiempo de espera
- * ============================================================================
- */
-
 import { Order, OrderPriority } from '../models/Order';
 
 export interface DynamicPriorityInfo {

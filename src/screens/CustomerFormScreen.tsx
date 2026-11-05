@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * SCREEN: CustomerFormScreen.tsx
- * Formulario para Crear o Editar Cliente con Ubicación GPS
- * ============================================================================
- */
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -26,6 +19,7 @@ import { useCustomers } from '../context/CustomerContext';
 import { useOrders } from '../context/OrderContext';
 import { CustomerType, isB2BCustomer } from '../models/Customer';
 import { COLORS, AVAILABLE_DISTRICTS, DISTRICT_COORDINATES } from '../utils/constants';
+import { getSavedDistricts } from '../services/districtService';
 import { Header } from '../components/common/Header';
 import { CustomInput } from '../components/common/CustomInput';
 import { CustomButton } from '../components/common/CustomButton';
@@ -51,6 +45,16 @@ export const CustomerFormScreen: React.FC<Props> = ({ route, navigation }) => {
   const [notes, setNotes] = useState('');
   const [latitude, setLatitude] = useState<number | undefined>(undefined);
   const [longitude, setLongitude] = useState<number | undefined>(undefined);
+  const [districtsList, setDistrictsList] = useState<string[]>(AVAILABLE_DISTRICTS);
+
+  // Cargar distritos dinámicos autorizados
+  useEffect(() => {
+    getSavedDistricts().then((list) => {
+      if (list && list.length > 0) {
+        setDistrictsList(list);
+      }
+    });
+  }, []);
 
   // Estados de interfaz
   const [isGettingGps, setIsGettingGps] = useState(false);
@@ -320,7 +324,7 @@ export const CustomerFormScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={styles.chipsContainer}>
           <Text style={styles.chipsLabel}>Sugerencias rápidas:</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
-            {AVAILABLE_DISTRICTS.map((dist) => (
+            {districtsList.map((dist) => (
               <TouchableOpacity
                 key={dist}
                 style={[
@@ -404,7 +408,7 @@ export const CustomerFormScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           ) : (
             <Text style={styles.gpsHelpText}>
-              Fijar el GPS permitirá que tus choferes vean a este cliente en el mapa interactivo y
+              Fijar el GPS permitirá que tus distribuidores vean a este cliente en el mapa interactivo y
               abran la ruta directa en Google Maps / Waze.
             </Text>
           )}

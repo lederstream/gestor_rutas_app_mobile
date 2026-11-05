@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * ORDER COMPONENT: PriorityBadge.tsx
- * Visual pill badge representing dispatch urgency (Urgente, Alta, Normal)
- * ============================================================================
- */
-
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

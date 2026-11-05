@@ -1,11 +1,3 @@
-/**
- * ============================================================================
- * NAVIGATION: RootNavigator.tsx
- * Type-safe React Navigation Stack con soporte para Autenticación y Roles (RBAC)
- * Implementa Flujo de Autenticación Condicional Estricto según Estándares de React Navigation
- * ============================================================================
- */
-
 import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
@@ -27,6 +19,7 @@ import { CustomerListScreen } from '../screens/CustomerListScreen';
 import { CustomerFormScreen } from '../screens/CustomerFormScreen';
 import { ProductListScreen } from '../screens/ProductListScreen';
 import { ProductFormScreen } from '../screens/ProductFormScreen';
+import { DriverListScreen } from '../screens/DriverListScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { COLORS } from '../utils/constants';
 
@@ -52,6 +45,7 @@ export type RootStackParamList = {
   CustomerFormScreen: { customerId?: string } | undefined;
   ProductListScreen: undefined;
   ProductFormScreen: { productId?: string } | undefined;
+  DriverListScreen: undefined;
 };
 
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -79,7 +73,7 @@ export const RootNavigator: React.FC = () => {
 
   // 2. FLUJO NO AUTENTICADO (GUEST / LOGIN)
   // Al no estar autenticado, el único screen que existe en el árbol de React es LoginScreen.
-  // Es físicamente imposible que el usuario quede atrapado en WelcomeScreen al cerrar sesión.
+  // 
   if (!isAuthenticated || !user) {
     return (
       <NavigationContainer key="guest-navigation-container">
@@ -113,10 +107,13 @@ export const RootNavigator: React.FC = () => {
   }
 
   // 4. FLUJO DISTRIBUIDOR Y ADMINISTRADOR (PANEL OPERATIVO Y RUTAS)
+  // Flujo inicial:
+  // El Distribuidor aterriza DIRECTAMENTE en el Mapa GPS (MapRouteScreen) para iniciar su ruta sin fricciones.
+  // El Administrador aterriza en el Tablero General (WelcomeScreen) para supervisar métricas.
   return (
     <NavigationContainer key={`operator-navigation-container-${user.id}-${user.role}`}>
       <Stack.Navigator
-        initialRouteName="WelcomeScreen"
+        initialRouteName="MapRouteScreen"
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right',
@@ -128,6 +125,7 @@ export const RootNavigator: React.FC = () => {
         <Stack.Screen name="CustomerFormScreen" component={CustomerFormScreen} />
         <Stack.Screen name="ProductListScreen" component={ProductListScreen} />
         <Stack.Screen name="ProductFormScreen" component={ProductFormScreen} />
+        <Stack.Screen name="DriverListScreen" component={DriverListScreen} />
         <Stack.Screen name="OrderListScreen" component={OrderListScreen} />
         <Stack.Screen
           name="CreateOrderScreen"

@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * SCREEN: ProductListScreen.tsx
- * Sección "Mis Productos": Catálogo de productos y servicios con precios y unidades
- * ============================================================================
- */
-
 import React, { useState, useMemo } from 'react';
 import {
   View,
@@ -233,15 +226,6 @@ export const ProductListScreen: React.FC<Props> = ({ navigation }) => {
             {filteredProducts.length}{' '}
             {filteredProducts.length === 1 ? 'producto en catálogo' : 'productos en catálogo'}
           </Text>
-          {isAdmin && (
-            <TouchableOpacity
-              style={styles.addBtnQuick}
-              onPress={() => navigation.navigate('ProductFormScreen')}
-            >
-              <Ionicons name="add" size={16} color={COLORS.primary} />
-              <Text style={styles.addBtnQuickText}>Nuevo Producto</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </View>
 
@@ -361,7 +345,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    paddingBottom: 95,
+    paddingBottom: 115,
   },
   card: {
     backgroundColor: COLORS.surface,

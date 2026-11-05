@@ -1,11 +1,3 @@
-/**
- * ============================================================================
- * UTILITY: haptics.ts
- * Retroalimentación táctil y sensorial para interacciones en ruta
- * Con fallback seguro si el dispositivo no soporta haptics o en web
- * ============================================================================
- */
-
 import { Platform } from 'react-native';
 
 let HapticsModule: any = null;

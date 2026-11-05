@@ -1,11 +1,3 @@
-/**
- * ============================================================================
- * DOMAIN MODEL: Customer.ts
- * Entidad Cliente para gestión de libreta de direcciones y pedidos recurrentes
- * Soporta segmentación binaria: B2B (Negocio/Comercio) y B2C (Hogar/Persona)
- * ============================================================================
- */
-
 export type CustomerType = 'B2B' | 'B2C';
 
 export interface Customer {
@@ -126,6 +118,32 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     notes: 'Llamar antes de entregar',
     latitude: -18.0480,
     longitude: -70.2630,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'cust-7',
+    name: 'Minimarket Los Laureles',
+    phone: '952667788',
+    deliveryAddress: 'Av. Leguía 980',
+    district: 'Tacna (Cercado)',
+    customerType: 'B2B',
+    addressReference: 'Cerca a la rotonda Leguía',
+    notes: 'Cliente con 3 envases de cambio listos',
+    latitude: -18.0185,
+    longitude: -70.2560,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'cust-8',
+    name: 'Chifa Dragón Dorado',
+    phone: '952112299',
+    deliveryAddress: 'Av. Pinto 630',
+    district: 'Alto de la Alianza',
+    customerType: 'B2B',
+    addressReference: 'A 2 cuadras de la feria Pinto',
+    notes: 'Entregar urgente para el servicio de almuerzo',
+    latitude: -17.9980,
+    longitude: -70.2520,
     createdAt: new Date().toISOString(),
   },
 ];

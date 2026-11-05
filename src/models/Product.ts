@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * DOMAIN MODEL: Product.ts
- * Entidad Producto / Servicio para catálogo de ventas y armado rápido de pedidos
- * ============================================================================
- */
-
 import { ProductCategory } from './Order';
 
 export interface Product {

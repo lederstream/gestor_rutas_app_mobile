@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * ENTRY POINT: App.tsx
- * Gestor de Rutas Móvil - Sistema de Logística y Distribución Inmediata
- * ============================================================================
- */
-
 import 'react-native-url-polyfill/auto';
 import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';

@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * SCREEN: CustomerListScreen.tsx
- * Sección "Mis Clientes": Directorio de clientes con contacto rápido y generación de pedido
- * ============================================================================
- */
-
 import React, { useState, useMemo } from 'react';
 import {
   View,
@@ -267,8 +260,8 @@ export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
         title="Mis Clientes"
         showBackButton={true}
         onBackPress={() => navigation.goBack()}
-        rightActionIcon="person-add"
-        onRightActionPress={() => navigation.navigate('CustomerFormScreen')}
+        rightActionIcon={isAdmin ? "person-add" : undefined}
+        onRightActionPress={isAdmin ? () => navigation.navigate('CustomerFormScreen') : undefined}
       />
 
       {/* Buscador y Resumen */}
@@ -295,15 +288,6 @@ export const CustomerListScreen: React.FC<Props> = ({ navigation }) => {
             {filteredCustomers.length}{' '}
             {filteredCustomers.length === 1 ? 'cliente encontrado' : 'clientes registrados'}
           </Text>
-          {isAdmin && (
-            <TouchableOpacity
-              style={styles.addBtnQuick}
-              onPress={() => navigation.navigate('CustomerFormScreen')}
-            >
-              <Ionicons name="add" size={16} color={COLORS.primary} />
-              <Text style={styles.addBtnQuickText}>Nuevo</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </View>
 
@@ -398,7 +382,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    paddingBottom: 95,
+    paddingBottom: 115,
   },
   card: {
     backgroundColor: COLORS.surface,

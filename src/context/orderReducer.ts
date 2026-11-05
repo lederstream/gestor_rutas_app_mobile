@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * STATE MANAGEMENT REDUCER: orderReducer.ts
- * Pure reducer handling state mutations for User-Driven Orders without Demo Data
- * ============================================================================
- */
-
 import { Order, OrderFilter, OrderStatus } from '../models/Order';
 
 export interface OrderState {

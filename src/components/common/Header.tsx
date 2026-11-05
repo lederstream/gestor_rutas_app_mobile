@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * COMMON COMPONENT: Header.tsx
- * Top navigation bar with back action, custom title/subtitle and quick action button
- * ============================================================================
- */
-
 import React from 'react';
 import {
   View,

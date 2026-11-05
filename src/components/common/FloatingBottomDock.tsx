@@ -1,12 +1,4 @@
-/**
- * ============================================================================
- * COMPONENT: FloatingBottomDock.tsx
- * Footer en Burbujas Flotantes (Floating Dock) con Principios de Neuromarketing
- * Ergonomía Thumb-Zone (3 burbujas para Chofer, 4 burbujas para Administrador)
- * ============================================================================
- */
-
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -20,7 +12,7 @@ import { useOrders } from '../../context/OrderContext';
 import { COLORS, RADIUS, SPACING } from '../../utils/constants';
 import { hapticSelection } from '../../utils/haptics';
 
-export type DockTab = 'HOME' | 'MAP' | 'ORDERS' | 'CUSTOMERS' | 'PRODUCTS' | 'MANIFEST';
+export type DockTab = 'HOME' | 'MAP' | 'ORDERS' | 'CUSTOMERS' | 'PRODUCTS' | 'MANIFEST' | 'PROFILE';
 
 interface FloatingBottomDockProps {
   activeTab: DockTab;
@@ -32,23 +24,38 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
   navigation,
 }) => {
   const { user } = useAuth();
-  const { statistics } = useOrders();
+  const { orders, statistics } = useOrders();
 
   const isAdmin = user?.role === 'ADMIN';
+  const isDistributor = user?.role === 'DISTRIBUTOR';
+  const isClient = user?.role === 'CLIENT';
 
-  // Badges dinámicos para neuromarketing de urgencia
-  const pendingDeliveries = statistics.pendingOrders + statistics.inTransitOrders;
+  // Badges dinámicos según rol y rubro especializado del distribuidor
+  const pendingDeliveries = useMemo(() => {
+    if (isDistributor) {
+      const specialty = user?.specialtyCategory || 'WATER';
+      return orders.filter(
+        (o) =>
+          o.category === specialty &&
+          (o.status === 'PENDING' || o.status === 'IN_TRANSIT')
+      ).length;
+    }
+    return statistics.pendingOrders + statistics.inTransitOrders;
+  }, [isDistributor, user, orders, statistics]);
 
-  // 1. TABS PARA EL DISTRIBUIDOR (3 BURBUJAS CLAVE: INICIO, RUTA GPS, MIS PARADAS)
+  // Cantidad de pedidos activos concurrentes para el cliente
+  const clientActiveOrdersCount = useMemo(() => {
+    if (!isClient || !user) return 0;
+    return orders.filter(
+      (o) =>
+        (o.customerId === user.customerId ||
+          o.customerName.toLowerCase() === user.name.toLowerCase()) &&
+        (o.status === 'PENDING' || o.status === 'IN_TRANSIT')
+    ).length;
+  }, [isClient, user, orders]);
+
+  // 1. TABS PARA EL DISTRIBUIDOR (4 HERRAMIENTAS REALES DE OPERACIÓN EN RUTA)
   const distributorTabs = [
-    {
-      id: 'HOME' as DockTab,
-      label: 'Inicio',
-      iconActive: 'home',
-      iconInactive: 'home-outline',
-      targetScreen: 'WelcomeScreen',
-      badge: 0,
-    },
     {
       id: 'MAP' as DockTab,
       label: 'Ruta GPS',
@@ -65,16 +72,32 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
       targetScreen: 'OrderListScreen',
       badge: pendingDeliveries,
     },
+    {
+      id: 'MANIFEST' as DockTab,
+      label: 'Mi Carga',
+      iconActive: 'cube',
+      iconInactive: 'cube-outline',
+      targetScreen: 'RouteSummaryModalOrScreen',
+      badge: 0,
+    },
+    {
+      id: 'PROFILE' as DockTab,
+      label: 'Mi Perfil',
+      iconActive: 'person',
+      iconInactive: 'person-outline',
+      targetScreen: 'ProfileScreen',
+      badge: 0,
+    },
   ];
 
-  // 2. TABS PARA EL ADMINISTRADOR (4 BURBUJAS CLAVE: INICIO, PEDIDOS, CLIENTES, CATÁLOGO)
+  // 2. TABS PARA EL ADMINISTRADOR (5 BURBUJAS CLAVE: RUTA GPS, PEDIDOS, CLIENTES, CATÁLOGO, MI PERFIL)
   const adminTabs = [
     {
-      id: 'HOME' as DockTab,
-      label: 'Tablero',
-      iconActive: 'grid',
-      iconInactive: 'grid-outline',
-      targetScreen: 'WelcomeScreen',
+      id: 'MAP' as DockTab,
+      label: 'Ruta GPS',
+      iconActive: 'navigate',
+      iconInactive: 'navigate-outline',
+      targetScreen: 'MapRouteScreen',
       badge: 0,
     },
     {
@@ -101,18 +124,72 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
       targetScreen: 'ProductListScreen',
       badge: 0,
     },
+    {
+      id: 'PROFILE' as DockTab,
+      label: 'Mi Perfil',
+      iconActive: 'person',
+      iconInactive: 'person-outline',
+      targetScreen: 'ProfileScreen',
+      badge: 0,
+    },
   ];
 
-  const currentTabs = isAdmin ? adminTabs : distributorTabs;
+  // 3. TABS PARA EL CLIENTE FINAL (4 BURBUJAS: CATÁLOGO, MI PEDIDO, HISTORIAL, MI PERFIL)
+  const clientTabs = [
+    {
+      id: 'PRODUCTS' as DockTab,
+      label: 'Catálogo',
+      iconActive: 'cube',
+      iconInactive: 'cube-outline',
+      targetScreen: 'ClientHomeScreen',
+      params: { tab: 'CATALOG' },
+      badge: 0,
+    },
+    {
+      id: 'ORDERS' as DockTab,
+      label: 'Mi Pedido',
+      iconActive: 'bicycle',
+      iconInactive: 'bicycle-outline',
+      targetScreen: 'ClientHomeScreen',
+      params: { tab: 'ORDER' },
+      badge: clientActiveOrdersCount,
+    },
+    {
+      id: 'MANIFEST' as DockTab,
+      label: 'Historial',
+      iconActive: 'receipt',
+      iconInactive: 'receipt-outline',
+      targetScreen: 'ClientHomeScreen',
+      params: { tab: 'HISTORY' },
+      badge: 0,
+    },
+    {
+      id: 'PROFILE' as DockTab,
+      label: 'Mi Perfil',
+      iconActive: 'person',
+      iconInactive: 'person-outline',
+      targetScreen: 'ProfileScreen',
+      badge: 0,
+    },
+  ];
 
-  const handlePressTab = (tab: (typeof currentTabs)[0]) => {
-    if (tab.id === activeTab) return;
+  const currentTabs = isAdmin ? adminTabs : isClient ? clientTabs : distributorTabs;
+
+  const handlePressTab = (tab: any) => {
+    if (tab.id === activeTab && (!tab.params || activeTab === 'PROFILE')) return;
     hapticSelection();
-    navigation.navigate(tab.targetScreen);
+    if (tab.params) {
+      navigation.navigate(tab.targetScreen, tab.params);
+    } else {
+      navigation.navigate(tab.targetScreen);
+    }
   };
 
   return (
     <View style={styles.dockOuterContainer} pointerEvents="box-none">
+      {/* Máscara de protección inferior: previene que el texto al hacer scroll se trasluzca */}
+      <View style={styles.dockBackdropMask} pointerEvents="none" />
+
       <View style={styles.dockCapsule}>
         {currentTabs.map((tab) => {
           const isActive = tab.id === activeTab;
@@ -127,11 +204,11 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
               <View style={styles.iconWrapper}>
                 <Ionicons
                   name={(isActive ? tab.iconActive : tab.iconInactive) as any}
-                  size={20}
+                  size={18}
                   color={isActive ? COLORS.primary : '#64748B'}
                 />
 
-                {/* Neuromarketing: Micro-badge de alerta o conteo */}
+                {/* Badge de notificación */}
                 {tab.badge > 0 && (
                   <View style={styles.badgePill}>
                     <Text style={styles.badgeText}>{tab.badge > 99 ? '99+' : tab.badge}</Text>
@@ -161,11 +238,23 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: Platform.OS === 'ios' ? 24 : 14,
+    bottom: 0,
+    paddingBottom: Platform.OS === 'ios' ? 14 : 4,
+    paddingTop: 2,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: SPACING.md,
     zIndex: 9999,
+  },
+  dockBackdropMask: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: Platform.OS === 'ios' ? 76 : 60,
+    backgroundColor: 'rgba(248, 250, 252, 0.94)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(226, 232, 240, 0.7)',
   },
   dockCapsule: {
     flexDirection: 'row',
@@ -173,26 +262,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     width: '100%',
     maxWidth: 390,
-    height: 62,
+    height: 52,
     backgroundColor: '#FFFFFF',
-    borderRadius: 32,
-    paddingHorizontal: 8,
+    borderRadius: 26,
+    paddingHorizontal: 6,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    // Luxury Soft Blur Shadow (Neuromarketing de calidad percibida)
+    // Sombra (Sombra suave)
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
     elevation: 8,
   },
   dockItem: {
     flex: 1,
-    height: 48,
+    height: 42,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 24,
-    paddingHorizontal: 4,
+    borderRadius: 21,
+    paddingHorizontal: 2,
   },
   dockItemActive: {
     backgroundColor: '#EFF6FF',
@@ -201,13 +290,13 @@ const styles = StyleSheet.create({
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 26,
-    height: 24,
+    width: 24,
+    height: 22,
   },
   tabLabel: {
-    fontSize: 10,
-    marginTop: 2,
-    letterSpacing: -0.1,
+    fontSize: 9,
+    marginTop: 1,
+    letterSpacing: -0.2,
   },
   tabLabelActive: {
     color: COLORS.primary,

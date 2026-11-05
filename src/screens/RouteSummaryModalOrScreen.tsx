@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * SCREEN: RouteSummaryModalOrScreen.tsx
- * Dispatch Manifest, Physical Truck Load Capacity & Route Financial Reconciliation
- * ============================================================================
- */
-
 import React, { useMemo } from 'react';
 import {
   View,
@@ -20,11 +13,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/RootNavigator';
+import { useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrderContext';
 import { COLORS } from '../utils/constants';
 import { formatCurrency } from '../utils/formatters';
 import { Header } from '../components/common/Header';
 import { CustomButton } from '../components/common/CustomButton';
+import { FloatingBottomDock } from '../components/common/FloatingBottomDock';
 import { hapticImpact, hapticNotification, hapticSelection } from '../utils/haptics';
 
 type Props = NativeStackScreenProps<
@@ -33,12 +28,25 @@ type Props = NativeStackScreenProps<
 >;
 
 export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
-  const { orders, statistics, routeLoad } = useOrders();
+  const { user } = useAuth();
+  const { orders, statistics, getOrdersForUser, getStatisticsForUser } = useOrders();
+
+  const isDistributor = user?.role === 'DISTRIBUTOR';
+
+  // Órdenes dinámicas del usuario según su rol y rubro (100% coherentes)
+  const manifestOrders = useMemo(() => {
+    return getOrdersForUser(user);
+  }, [getOrdersForUser, user, orders]);
+
+  // Estadísticas operativas calculadas dinámicamente
+  const userStats = useMemo(() => {
+    return getStatisticsForUser(user);
+  }, [getStatisticsForUser, user, orders]);
 
   // Group active orders by district
   const districtStops = useMemo(() => {
     const counts: Record<string, { total: number; pending: number }> = {};
-    orders.forEach((o) => {
+    manifestOrders.forEach((o) => {
       if (!counts[o.district]) {
         counts[o.district] = { total: 0, pending: 0 };
       }
@@ -48,17 +56,46 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
       }
     });
     return Object.entries(counts).sort((a, b) => b[1].total - a[1].total);
-  }, [orders]);
+  }, [manifestOrders]);
 
   // Total de envases retornables devueltos a bordo
   const totalReturnedContainers = useMemo(() => {
-    return orders.reduce((acc, o) => acc + (o.returnedContainers || 0), 0);
-  }, [orders]);
+    return manifestOrders.reduce((acc, o) => acc + (o.returnedContainers || 0), 0);
+  }, [manifestOrders]);
+
+  // Carga activa física en vehículo para este manifiesto
+  const manifestRouteLoad = useMemo(() => {
+    const itemMap = new Map<
+      string,
+      { category: any; label: string; totalQuantity: number; unit: string }
+    >();
+
+    manifestOrders.forEach((order) => {
+      if (order.status === 'PENDING' || order.status === 'IN_TRANSIT') {
+        order.items.forEach((item) => {
+          const key = item.name.toLowerCase();
+          const existing = itemMap.get(key);
+          if (existing) {
+            existing.totalQuantity += item.quantity;
+          } else {
+            itemMap.set(key, {
+              category: order.category,
+              label: item.name,
+              totalQuantity: item.quantity,
+              unit: item.unit || 'und',
+            });
+          }
+        });
+      }
+    });
+
+    return Array.from(itemMap.values());
+  }, [manifestOrders]);
 
   // Estimación de peso total de carga física en kg (para no exceder capacidad del vehículo)
   const estimatedPayloadKg = useMemo(() => {
     let weight = 0;
-    orders.forEach((o) => {
+    manifestOrders.forEach((o) => {
       if (o.status !== 'CANCELLED') {
         o.items.forEach((item) => {
           const name = item.name.toLowerCase();
@@ -75,7 +112,7 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
       }
     });
     return Math.round(weight);
-  }, [orders]);
+  }, [manifestOrders]);
 
   // Cash and Digital Collections Breakdown
   const financialBreakdown = useMemo(() => {
@@ -83,7 +120,7 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
     let yape = 0;
     let cardOrBank = 0;
 
-    orders.forEach((o) => {
+    manifestOrders.forEach((o) => {
       if (o.status === 'DELIVERED') {
         if (o.paymentMethod === 'CASH') cash += o.totalAmount;
         else if (o.paymentMethod === 'YAPE_PLIN') yape += o.totalAmount;
@@ -92,25 +129,25 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
     });
 
     return { cash, yape, cardOrBank };
-  }, [orders]);
+  }, [manifestOrders]);
 
   // Share / Export Manifest
   const handleShareManifest = async () => {
     const textLines = [
       '📋 *HOJA DE RUTA Y MANIFIESTO - GESTOR DE RUTAS*',
       `Fecha: ${new Date().toLocaleDateString('es-PE')}`,
-      `Total Despachos: ${statistics.totalOrders} pedidos`,
-      `Entregados: ${statistics.deliveredOrders} | En Ruta: ${statistics.inTransitOrders}`,
-      `Efectividad: ${statistics.completedDeliveriesRate}%`,
+      `Total Despachos: ${userStats.totalOrders} pedidos`,
+      `Entregados: ${userStats.deliveredOrders} | En Ruta: ${userStats.inTransitOrders}`,
+      `Efectividad: ${userStats.completedDeliveriesRate}%`,
       '',
       '📦 *CARGA ACTIVA EN VEHÍCULO:*',
-      ...routeLoad.map(
+      ...manifestRouteLoad.map(
         (load) => `• ${load.label.split('(')[0]}: ${load.totalQuantity} ${load.unit}`
       ),
       '',
       '💰 *LIQUIDACIÓN ECONÓMICA:*',
-      `Total Recaudado: ${formatCurrency(statistics.totalRevenue)}`,
-      `Por Cobrar en Calle: ${formatCurrency(statistics.pendingCollection)}`,
+      `Total Recaudado: ${formatCurrency(userStats.totalRevenue)}`,
+      `Por Cobrar en Calle: ${formatCurrency(userStats.pendingCollection)}`,
     ];
 
     try {
@@ -150,8 +187,12 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
       <Header
-        title="Manifiesto y Hoja de Ruta"
-        subtitle="Consolidado de carga, flota y liquidación"
+        title={isDistributor ? 'Manifiesto de Carga' : 'Manifiesto y Hoja de Ruta'}
+        subtitle={
+          isDistributor
+            ? user?.specialtyLabel || 'Distribuidor de Agua Purificada'
+            : 'Consolidado de carga, flota y liquidación'
+        }
         showBackButton={true}
         onBackPress={() => navigation.goBack()}
         rightActionIcon="share-social-outline"
@@ -167,7 +208,7 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.progressHeaderRow}>
             <Text style={styles.progressTitle}>Avance General de Despacho</Text>
             <Text style={styles.progressPercentText}>
-              {statistics.completedDeliveriesRate}%
+              {userStats.completedDeliveriesRate}%
             </Text>
           </View>
 
@@ -176,7 +217,7 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
             <View
               style={[
                 styles.progressBarFill,
-                { width: `${Math.min(statistics.completedDeliveriesRate, 100)}%` },
+                { width: `${Math.min(userStats.completedDeliveriesRate, 100)}%` },
               ]}
             />
           </View>
@@ -184,19 +225,19 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.progressStatsRow}>
             <View style={styles.progressStatCol}>
               <Text style={styles.progressStatNum}>
-                {statistics.deliveredOrders} / {statistics.totalOrders}
+                {userStats.deliveredOrders} / {userStats.totalOrders}
               </Text>
               <Text style={styles.progressStatLabel}>Entregas Concluidas</Text>
             </View>
             <View style={styles.progressStatCol}>
               <Text style={[styles.progressStatNum, { color: COLORS.statusInTransit }]}>
-                {statistics.inTransitOrders}
+                {userStats.inTransitOrders}
               </Text>
               <Text style={styles.progressStatLabel}>En Tránsito</Text>
             </View>
             <View style={styles.progressStatCol}>
               <Text style={[styles.progressStatNum, { color: COLORS.statusPending }]}>
-                {statistics.pendingOrders}
+                {userStats.pendingOrders}
               </Text>
               <Text style={styles.progressStatLabel}>Por Iniciar</Text>
             </View>
@@ -213,9 +254,9 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
           </Text>
 
           <View style={styles.loadGrid}>
-            {routeLoad.map((item) => {
+            {manifestRouteLoad.map((item, idx) => {
               return (
-                <View key={item.category} style={styles.loadBox}>
+                <View key={`${item.category}-${idx}`} style={styles.loadBox}>
                   <View
                     style={[
                       styles.loadIconCircle,
@@ -335,11 +376,11 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
             <View>
               <Text style={styles.finTotalLabel}>Total Cobrado en Turno</Text>
               <Text style={styles.finPendingNotice}>
-                Pendiente por liquidar: {formatCurrency(statistics.pendingCollection)}
+                Pendiente por liquidar: {formatCurrency(userStats.pendingCollection)}
               </Text>
             </View>
             <Text style={styles.finTotalValue}>
-              {formatCurrency(statistics.totalRevenue)}
+              {formatCurrency(userStats.totalRevenue)}
             </Text>
           </View>
         </View>
@@ -365,6 +406,9 @@ export const RouteSummaryModalOrScreen: React.FC<Props> = ({ navigation }) => {
           />
         </View>
       </ScrollView>
+
+      {/* Floating Dock - Burbujas Flotantes de Navegación */}
+      <FloatingBottomDock activeTab="MANIFEST" navigation={navigation} />
     </SafeAreaView>
   );
 };
@@ -376,7 +420,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 115,
   },
   progressCard: {
     backgroundColor: COLORS.secondary,

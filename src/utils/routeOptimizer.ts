@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * UTILITY: routeOptimizer.ts
- * Algoritmo de optimización de paradas y cálculo de distancias geodésicas (Haversine)
- * ============================================================================
- */
-
 import { Order } from '../models/Order';
 
 export interface GeoPoint {

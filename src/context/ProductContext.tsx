@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * CONTEXT: ProductContext.tsx
- * Gestión del estado del Catálogo de Productos y Servicios en AsyncStorage
- * ============================================================================
- */
-
 import React, {
   createContext,
   useContext,

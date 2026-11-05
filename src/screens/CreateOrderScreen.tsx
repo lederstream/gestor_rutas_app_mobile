@@ -1,11 +1,3 @@
-/**
- * ============================================================================
- * SCREEN: CreateOrderScreen.tsx
- * Asistente Guiado en 3 Pasos (Step Wizard) para Generación Rápida de Pedidos
- * Diseñado para Máxima Facilidad y Mínima Carga Cognitiva
- * ============================================================================
- */
-
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
@@ -56,9 +48,9 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
   // Paso actual del asistente (1: Cliente, 2: Productos, 3: Cobro y Confirmar)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
-  // =========================================================================
+  
   // PASO 1: CLIENTE
-  // =========================================================================
+  
   const [clientMode, setClientMode] = useState<'EXISTING' | 'MANUAL'>('EXISTING');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [customerSearch, setCustomerSearch] = useState('');
@@ -79,9 +71,9 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [manualItemErrors, setManualItemErrors] = useState<Record<string, string>>({});
 
-  // =========================================================================
+  
   // PASO 2: PRODUCTOS
-  // =========================================================================
+  
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [productCategoryFilter, setProductCategoryFilter] = useState<string>('ALL');
   const [showManualItemForm, setShowManualItemForm] = useState(false);
@@ -89,9 +81,9 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
   const [manualItemPrice, setManualItemPrice] = useState('');
   const [manualItemUnit, setManualItemUnit] = useState('Unidad');
 
-  // =========================================================================
+  
   // PASO 3: PAGO Y DESPACHO
-  // =========================================================================
+  
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [cashAmountGiven, setCashAmountGiven] = useState('');
   const [priority, setPriority] = useState<OrderPriority>('NORMAL');
@@ -542,9 +534,7 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* =================================================================== */}
           {/* PASO 1: SELECCIÓN O REGISTRO DE CLIENTE */}
-          {/* =================================================================== */}
           {currentStep === 1 && (
             <View>
               {/* Pestañas de modo */}
@@ -830,9 +820,7 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           )}
 
-          {/* =================================================================== */}
           {/* PASO 2: PRODUCTOS Y CARGA */}
-          {/* =================================================================== */}
           {currentStep === 2 && (
             <View>
               {/* Alerta de Validación Visible en Rojo si no hay artículos */}
@@ -989,9 +977,7 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           )}
 
-          {/* =================================================================== */}
           {/* PASO 3: COBRO Y DESPACHO FINAL */}
-          {/* =================================================================== */}
           {currentStep === 3 && (
             <View>
               {/* Tarjeta de Resumen Económico */}
@@ -1105,7 +1091,7 @@ export const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
               <Text style={[styles.stepSectionHeader, { marginTop: 18 }]}>Instrucciones de Entrega</Text>
               <TextInput
                 style={[styles.formInput, { height: 70, textAlignVertical: 'top' }]}
-                placeholder="Instrucciones para el repartidor (Ej: llamar al llegar, dejar en recepción)"
+                placeholder="Instrucciones para el distribuidor (Ej: llamar al llegar, dejar en recepción)"
                 placeholderTextColor={COLORS.textMuted}
                 value={notes}
                 onChangeText={setNotes}

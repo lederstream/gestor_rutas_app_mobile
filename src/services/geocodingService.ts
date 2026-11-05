@@ -1,11 +1,3 @@
-/**
- * ============================================================================
- * SERVICE: geocodingService.ts
- * Servicio de Geocodificación 100% In-Memory y Offline para Lima Metropolitana.
- * Sin dependencias de red externas inestables ni APIs de terceros.
- * ============================================================================
- */
-
 import { DISTRICT_COORDINATES } from '../utils/constants';
 
 export interface GeocodeResult {
